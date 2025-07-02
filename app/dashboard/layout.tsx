@@ -54,7 +54,7 @@ export default function Layout({ children }: LayoutProps) {
   const { isCollapsed } = useSidebarStore();
 
   return (
-    <div className="bg-[linear-gradient(to_bottom_right,_#EFEDED,_#ACB4B7)] min-h-screen">
+    <div className="bg-[#F0F0F0] min-h-screen">
       <Navbar />
       <Sidebar />
 
