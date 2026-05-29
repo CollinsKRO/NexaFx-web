@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
-// Injected server-side for local dev testing — replace with real auth once login flow exists
-const DEV_TOKEN = process.env.TEST_ACCESS_TOKEN ?? "";
+
+/**
+ * DEV_TOKEN: LOCAL DEVELOPMENT ONLY
+ * 
+ * This fallback token is ONLY used in local development (NODE_ENV === "development").
+ * It must NEVER be set in staging, production, or any deployed environment.
+ * 
+ * If TEST_ACCESS_TOKEN is set in a deployed environment without this guard,
+ * all proxy requests from unauthenticated users would be authorized using that token,
+ * leaking real data including transactions, notifications, and other sensitive information.
+ * 
+ * SECURITY RISK: Setting TEST_ACCESS_TOKEN on Render staging/production without
+ * this NODE_ENV check would allow unauthenticated API requests to succeed.
+ */
+const DEV_TOKEN = process.env.NODE_ENV === "development"
+  ? (process.env.TEST_ACCESS_TOKEN ?? "")
+  : "";
 
 async function handler(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
     const { path } = await params;
