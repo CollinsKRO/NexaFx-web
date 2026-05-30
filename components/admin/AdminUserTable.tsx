@@ -1,6 +1,6 @@
 'use client';
 
-import { AdminUser } from '@/lib/admin-mock-data';
+import { type AdminUser } from '@/lib/api/admin';
 
 interface AdminUserTableProps {
   users: AdminUser[];

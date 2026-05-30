@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { AdminUser } from '@/lib/admin-mock-data';
+import { useState, useEffect } from 'react';
+import { type AdminUser, getAdminUserById } from '@/lib/api/admin';
 import { X, Eye, EyeOff, Copy, MoreVertical, Trash2 } from 'lucide-react';
 
 interface UserDetailPanelProps {
@@ -10,11 +10,33 @@ interface UserDetailPanelProps {
 }
 
 export function UserDetailPanel({ user, onClose }: UserDetailPanelProps) {
+  const [currentUser, setCurrentUser] = useState<AdminUser>(user);
+  const [detailsLoading, setDetailsLoading] = useState(false);
   const [showSensitiveInfo, setShowSensitiveInfo] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  useEffect(() => {
+    setCurrentUser(user); // Reset when user prop changes
+    
+    async function fetchDetails() {
+      try {
+        setDetailsLoading(true);
+        const fullDetails = await getAdminUserById(user.id);
+        if (fullDetails) {
+          setCurrentUser(fullDetails);
+        }
+      } catch (err) {
+        console.warn(`Admin user details GET for ID ${user.id} failed or route GET /admin/users/:id does not exist on backend. Using prop data:`, err);
+      } finally {
+        setDetailsLoading(false);
+      }
+    }
+    
+    fetchDetails();
+  }, [user]);
+
   const handleCopyWallet = () => {
-    navigator.clipboard.writeText(user.walletAddress);
+    navigator.clipboard.writeText(currentUser.walletAddress);
   };
 
   const handleDelete = () => {
@@ -22,16 +44,16 @@ export function UserDetailPanel({ user, onClose }: UserDetailPanelProps) {
   };
 
   const confirmDelete = () => {
-    console.log('User deleted:', user.id);
+    console.log('User deleted:', currentUser.id);
     setShowDeleteConfirm(false);
     onClose();
   };
 
   const getInitials = () => {
-    if (user.firstName && user.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    if (currentUser.firstName && currentUser.lastName) {
+      return `${currentUser.firstName[0]}${currentUser.lastName[0]}`.toUpperCase();
     }
-    return user.email[0].toUpperCase();
+    return currentUser.email[0].toUpperCase();
   };
 
   return (
@@ -42,7 +64,9 @@ export function UserDetailPanel({ user, onClose }: UserDetailPanelProps) {
       <div className="fixed inset-x-0 bottom-0 lg:right-0 lg:top-10 lg:inset-x-auto max-h-[85vh] lg:h-[590px] w-full lg:w-[710px] bg-white shadow-2xl z-50 overflow-y-auto rounded-t-3xl lg:rounded-lg lg:mr-4">
         {/* Header */}
         <div className="sticky top-0 bg-white px-4 lg:px-5 py-4 flex items-center justify-center lg:justify-between border-b border-gray-200">
-          <h2 className="text-base font-medium text-gray-900">User Details</h2>
+          <h2 className="text-base font-medium text-gray-900">
+            User Details {detailsLoading && <span className="ml-2 text-xs text-gray-400 animate-pulse">(fetching details...)</span>}
+          </h2>
           <button onClick={onClose} className="hidden lg:block p-1 hover:bg-gray-100 rounded-full transition-colors absolute right-4">
             <X className="w-5 h-5 text-gray-500" />
           </button>
@@ -73,21 +97,21 @@ export function UserDetailPanel({ user, onClose }: UserDetailPanelProps) {
                   <div className="flex justify-between items-center">
                     <p className="text-sm text-gray-500">Name</p>
                     <p className="text-sm text-gray-900 font-medium">
-                      {showSensitiveInfo ? (user.firstName && user.lastName ? `${user.firstName} , ${user.lastName}` : 'No name') : '••••••••'}
+                      {showSensitiveInfo ? (currentUser.firstName && currentUser.lastName ? `${currentUser.firstName} , ${currentUser.lastName}` : 'No name') : '••••••••'}
                     </p>
                   </div>
                   <div className="flex justify-between items-center">
                     <p className="text-sm text-gray-500">Email address</p>
-                    <p className="text-sm text-gray-900 font-medium">{showSensitiveInfo ? user.email : '••••••••'}</p>
+                    <p className="text-sm text-gray-900 font-medium">{showSensitiveInfo ? currentUser.email : '••••••••'}</p>
                   </div>
                   <div className="flex justify-between items-center">
                     <p className="text-sm text-gray-500">Phone Number</p>
-                    <p className="text-sm text-gray-900 font-medium">{showSensitiveInfo ? (user.phone || 'No phone number') : '••••••••'}</p>
+                    <p className="text-sm text-gray-900 font-medium">{showSensitiveInfo ? (currentUser.phone || 'No phone number') : '••••••••'}</p>
                   </div>
                   <div className="flex justify-between items-center">
                     <p className="text-sm text-gray-500">Wallet address</p>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm text-gray-900 font-medium">{showSensitiveInfo ? user.walletAddress : '••••••••'}</p>
+                      <p className="text-sm text-gray-900 font-medium">{showSensitiveInfo ? currentUser.walletAddress : '••••••••'}</p>
                       {showSensitiveInfo && (
                         <button onClick={handleCopyWallet} className="p-1 hover:bg-gray-100 rounded transition-colors">
                           <Copy className="w-4 h-4 text-gray-400" />
@@ -97,7 +121,7 @@ export function UserDetailPanel({ user, onClose }: UserDetailPanelProps) {
                   </div>
                   <div className="flex justify-between items-center">
                     <p className="text-sm text-gray-500">Username</p>
-                    <p className="text-sm text-gray-900 font-medium">{showSensitiveInfo ? user.username : '••••••••'}</p>
+                    <p className="text-sm text-gray-900 font-medium">{showSensitiveInfo ? currentUser.username : '••••••••'}</p>
                   </div>
                 </div>
 
@@ -105,15 +129,15 @@ export function UserDetailPanel({ user, onClose }: UserDetailPanelProps) {
                 <div className="grid grid-cols-3 gap-4 lg:gap-8 pt-6 mt-6 border-t border-gray-200">
                   <div>
                     <p className="text-sm text-gray-500 mb-2">Transactions</p>
-                    <p className="text-xl lg:text-2xl font-semibold text-gray-900">{user.transactions}</p>
+                    <p className="text-xl lg:text-2xl font-semibold text-gray-900">{currentUser.transactions}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500 mb-2">Total deposit</p>
-                    <p className="text-xl lg:text-2xl font-semibold text-gray-900">NGN{user.totalDeposit.toFixed(2)}</p>
+                    <p className="text-xl lg:text-2xl font-semibold text-gray-900">NGN{currentUser.totalDeposit.toFixed(2)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500 mb-2">Total withdraw</p>
-                    <p className="text-xl lg:text-2xl font-semibold text-gray-900">NGN{user.totalWithdraw.toFixed(2)}</p>
+                    <p className="text-xl lg:text-2xl font-semibold text-gray-900">NGN{currentUser.totalWithdraw.toFixed(2)}</p>
                   </div>
                 </div>
               </div>
@@ -122,7 +146,7 @@ export function UserDetailPanel({ user, onClose }: UserDetailPanelProps) {
               <div className="bg-white lg:rounded-lg lg:border lg:border-gray-200 lg:p-5">
                 <h3 className="text-xs font-medium text-gray-400 uppercase mb-3 tracking-wider">KYC Verification</h3>
                 <div className="bg-orange-50 rounded-lg px-4 py-3 flex items-center justify-between">
-                  <span className="text-base font-medium text-orange-700">{user.kycStatus}</span>
+                  <span className="text-base font-medium text-orange-700">{currentUser.kycStatus}</span>
                   <button className="text-gray-400 hover:text-gray-600"><MoreVertical className="w-5 h-5" /></button>
                 </div>
               </div>
@@ -142,7 +166,7 @@ export function UserDetailPanel({ user, onClose }: UserDetailPanelProps) {
               <div className="bg-white lg:rounded-lg lg:border lg:border-gray-200 lg:p-5">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Account created</span>
-                  <span className="text-sm font-semibold text-gray-900">{user.createdAt}</span>
+                  <span className="text-sm font-semibold text-gray-900">{currentUser.createdAt}</span>
                 </div>
               </div>
             </div>

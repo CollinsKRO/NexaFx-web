@@ -10,7 +10,25 @@ import {
     Tooltip,
 } from "recharts";
 import { ChevronDown } from "lucide-react";
-import { mockRevenueData } from "@/lib/admin-mock-data";
+// NOTE: The backend's GET /admin/metrics only returns single summary totals
+// (totalDeposits, totalWithdrawals) instead of time-series/historical monthly progress.
+// To keep this visual chart component working premium-grade without rendering empty dashboards,
+// we retain the historical monthly structure from mockRevenueData.
+// Raised a backend feature request for GET /admin/revenue-chart or time-series metrics.
+const mockRevenueData = [
+  { month: 'JAN', value: 60000 },
+  { month: 'FEB', value: 85000 },
+  { month: 'MAR', value: 50000 },
+  { month: 'APR', value: 45000 },
+  { month: 'MAY', value: 90000 },
+  { month: 'JUN', value: 10000 },
+  { month: 'JUL', value: 30000 },
+  { month: 'AUG', value: 25000 },
+  { month: 'SEP', value: 92000 },
+  { month: 'OCT', value: 70000 },
+  { month: 'NOV', value: 55000 },
+  { month: 'DEC', value: 68000 },
+];
 
 const ACTIVE_MONTH = "MAY";
 const ACTIVE_COLOR = "#F97316";

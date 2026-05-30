@@ -1,18 +1,35 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { mockPushNotifications, PushNotification } from "@/lib/admin-mock-data";
+import { useState, useMemo, useEffect } from "react";
 import PushNotificationTable from "@/components/admin/push-notifications/PushNotificationTable";
 import CreatePushNotificationModal from "@/components/admin/push-notifications/CreatePushNotificationModal";
+import { getAdminPushNotifications, createAdminPushNotification, type PushNotification } from "@/lib/api/admin";
 import { Search, Plus } from "lucide-react";
 
-export default function TransactionsPage() {
-    const [notifications, setNotifications] = useState<PushNotification[]>(
-        mockPushNotifications,
-    );
+export default function PushNotificationsPage() {
+    const [notifications, setNotifications] = useState<PushNotification[]>([]);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [search, setSearch] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        async function fetchNotifications() {
+            try {
+                setLoading(true);
+                setError(null);
+                const data = await getAdminPushNotifications();
+                setNotifications(data);
+            } catch (err: unknown) {
+                console.error("Error fetching push notifications:", err);
+                setError(err instanceof Error ? err.message : "Failed to load push notifications.");
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchNotifications();
+    }, []);
 
     const filteredData = useMemo(() => {
         return notifications.filter(
@@ -23,6 +40,7 @@ export default function TransactionsPage() {
     }, [notifications, search]);
 
     const handleDeactivate = () => {
+        // Since backend does not explicitly support deactivate in simple REST, we simulate locally
         setNotifications((prev) =>
             prev.map((n) =>
                 selectedIds.includes(n.id) ? { ...n, status: "Inactive" } : n,
@@ -31,21 +49,38 @@ export default function TransactionsPage() {
         setSelectedIds([]);
     };
 
-    const handleCreate = (title: string, message: string) => {
-        const newNotification: PushNotification = {
-            id: Date.now().toString(),
-            title,
-            message,
-            status: "Active",
-            createdAt: new Date().toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-            }),
-        };
-
-        setNotifications((prev) => [newNotification, ...prev]);
+    const handleCreate = async (title: string, message: string) => {
+        try {
+            const newNotification = await createAdminPushNotification({ title, message });
+            setNotifications((prev) => [newNotification, ...prev]);
+        } catch (err: unknown) {
+            console.error("Error creating push notification:", err);
+            alert(err instanceof Error ? err.message : "Failed to create push notification.");
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg max-w-lg mx-auto mt-8">
+                <p className="font-semibold">Error Loading Push Notifications</p>
+                <p className="text-sm">{error}</p>
+                <button 
+                    onClick={() => window.location.reload()} 
+                    className="mt-2 text-xs font-semibold underline hover:text-red-800"
+                >
+                    Try Again
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="md:p-6 space-y-6">

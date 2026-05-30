@@ -1,13 +1,61 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { ChevronDown, UserPlus, ArrowUpDown, Clock, Coins } from "lucide-react";
 import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
 import { RevenueChart } from "@/components/admin/RevenueChart";
-import { mockAdminMetrics, mockAdminUsers } from "@/lib/admin-mock-data";
-
-const recentUsers = mockAdminUsers.slice(0, 5);
+import { getAdminMetrics, getAdminUsers, type AdminMetrics, type AdminUser } from "@/lib/api/admin";
 
 export default function AnalyticsPage() {
+    const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
+    const [recentUsers, setRecentUsers] = useState<AdminUser[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        async function fetchAnalyticsData() {
+            try {
+                setLoading(true);
+                setError(null);
+                const [fetchedMetrics, fetchedUsers] = await Promise.all([
+                    getAdminMetrics(),
+                    getAdminUsers(),
+                ]);
+                setMetrics(fetchedMetrics);
+                setRecentUsers(fetchedUsers.slice(0, 5));
+            } catch (err: unknown) {
+                console.error("Error fetching analytics data:", err);
+                setError(err instanceof Error ? err.message : "Failed to load analytics data.");
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchAnalyticsData();
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400" />
+            </div>
+        );
+    }
+
+    if (error || !metrics) {
+        return (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg max-w-lg mx-auto mt-8">
+                <p className="font-semibold">Error Loading Analytics</p>
+                <p className="text-sm">{error || "Could not retrieve metrics"}</p>
+                <button 
+                    onClick={() => window.location.reload()} 
+                    className="mt-2 text-xs font-semibold underline hover:text-red-800"
+                >
+                    Try Again
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             {/* Overview section header */}
@@ -24,22 +72,22 @@ export default function AnalyticsPage() {
             <div className="flex flex-wrap gap-4">
                 <AdminMetricCard
                     label="Registered Users"
-                    value={mockAdminMetrics.registeredUsers}
+                    value={metrics.registeredUsers}
                     icon={UserPlus}
                 />
                 <AdminMetricCard
                     label="Total Transaction"
-                    value={mockAdminMetrics.totalTransactions}
+                    value={metrics.totalTransactions}
                     icon={ArrowUpDown}
                 />
                 <AdminMetricCard
                     label="Pending KYC"
-                    value={mockAdminMetrics.pendingKyc}
+                    value={metrics.pendingKyc}
                     icon={Clock}
                 />
                 <AdminMetricCard
                     label="Currency"
-                    value={mockAdminMetrics.currencies}
+                    value={metrics.currencies}
                     icon={Coins}
                 />
             </div>
@@ -53,13 +101,13 @@ export default function AnalyticsPage() {
                     <div className="h-[126px] flex items-center pl-6 border-b border-gray-200">
                         <div className="flex flex-col gap-2">
                             <p className="text-xs font-medium leading-none text-gray-500">Total Deposits</p>
-                            <p className="text-[32px] font-semibold leading-none text-gray-900">{mockAdminMetrics.totalDeposits.toLocaleString()}</p>
+                            <p className="text-[32px] font-semibold leading-none text-gray-900">{metrics.totalDeposits.toLocaleString()}</p>
                         </div>
                     </div>
                     <div className="h-[126px] flex items-center pl-6">
                         <div className="flex flex-col gap-2">
                             <p className="text-xs font-medium leading-none text-gray-500">Total Withdrawals</p>
-                            <p className="text-[32px] font-semibold leading-none text-gray-900">{mockAdminMetrics.totalWithdrawals.toLocaleString()}</p>
+                            <p className="text-[32px] font-semibold leading-none text-gray-900">{metrics.totalWithdrawals.toLocaleString()}</p>
                         </div>
                     </div>
                 </div>

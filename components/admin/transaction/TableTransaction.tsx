@@ -1,7 +1,11 @@
-import { mockAdminTransactions } from "@/lib/admin-mock-data";
+import { type AdminTransaction } from "@/lib/api/admin";
 import { TypeTransaction } from "./TypeTransaction";
 
-export function TableTransaction() {
+interface TableTransactionProps {
+  transactions: AdminTransaction[];
+}
+
+export function TableTransaction({ transactions }: TableTransactionProps) {
   return (
     <div>
       <table className="rounded-t-2xl bg-white w-full text-left " role="table">
@@ -22,7 +26,7 @@ export function TableTransaction() {
           </tr>
         </thead>
         <tbody>
-          {mockAdminTransactions.map((item) => (
+          {transactions.map((item) => (
             <tr key={item.id} className="text-[14px] font-medium ">
               <td className="hidden sm:table-cell font-semibold pl-8 py-5 border border-transparent border-b-[#00000033]">
                 <span className="inline-block rounded-full size-2.5 bg-[#66FF47] mr-3" />
@@ -47,6 +51,13 @@ export function TableTransaction() {
               </td>
             </tr>
           ))}
+          {transactions.length === 0 && (
+            <tr>
+              <td colSpan={6} className="text-center py-8 text-gray-500 font-medium">
+                No transactions found.
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>

@@ -1,29 +1,49 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Filter } from 'lucide-react';
-import { mockAdminUsers, AdminUser } from '@/lib/admin-mock-data';
 import { AdminUserTable } from '@/components/admin/AdminUserTable';
 import { UserDetailPanel } from '@/components/admin/UserDetailPanel';
+import { getAdminUsers, type AdminUser } from '@/lib/api/admin';
 
 const ITEMS_PER_PAGE = 10;
 
 export default function UsersPage() {
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
 
+  useEffect(() => {
+    async function fetchUsers() {
+      try {
+        setLoading(true);
+        setError(null);
+        const fetchedUsers = await getAdminUsers();
+        setUsers(fetchedUsers);
+      } catch (err: unknown) {
+        console.error('Error fetching users:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load users.');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchUsers();
+  }, []);
+
   // Filter users based on search query
   const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return mockAdminUsers;
+    if (!searchQuery.trim()) return users;
     
     const query = searchQuery.toLowerCase();
-    return mockAdminUsers.filter(user => 
+    return users.filter(user => 
       user.email.toLowerCase().includes(query) ||
       user.firstName?.toLowerCase().includes(query) ||
       user.lastName?.toLowerCase().includes(query)
     );
-  }, [searchQuery]);
+  }, [users, searchQuery]);
 
   // Paginate filtered users
   const paginatedUsers = useMemo(() => {
@@ -33,7 +53,7 @@ export default function UsersPage() {
   }, [filteredUsers, currentPage]);
 
   const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
-  const startEntry = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const startEntry = filteredUsers.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
   const endEntry = Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length);
 
   const handleNextPage = () => {
@@ -45,6 +65,30 @@ export default function UsersPage() {
   const handleSeeAll = () => {
     setCurrentPage(1);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg max-w-lg mx-auto mt-8">
+        <p className="font-semibold">Error Loading Users</p>
+        <p className="text-sm">{error}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-2 text-xs font-semibold underline hover:text-red-800"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
 
   return (
     <div className="space-y-6">

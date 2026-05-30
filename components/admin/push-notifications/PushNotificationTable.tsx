@@ -1,4 +1,4 @@
-import { PushNotification } from "@/lib/admin-mock-data";
+import { type PushNotification } from "@/lib/api/admin";
 
 type Props = {
     data: PushNotification[];
