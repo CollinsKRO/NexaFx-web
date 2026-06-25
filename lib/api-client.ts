@@ -1,7 +1,7 @@
 import { useAuthStore } from '@/hooks/use-auth-store';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
-const PROXY_URL = '/api/proxy';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const PROXY_URL = "/api/proxy";
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string>;
@@ -55,31 +55,33 @@ export async function apiClient<T>(
   options: RequestOptions = {},
 ): Promise<T> {
   const { params, useProxy = true, ...fetchOptions } = options;
-  
-  let url = '';
-  if (useProxy) {
-    url = `${PROXY_URL}${path.startsWith('/') ? path : `/${path}`}`;
-  } else {
-    url = `${BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
-  }
-  
+
+  const url = useProxy
+    ? `${PROXY_URL}${path.startsWith("/") ? path : `/${path}`}`
+    : `${BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+
   const searchParams = new URLSearchParams();
   if (params) {
     Object.keys(params).forEach((key) => searchParams.append(key, params[key]));
   }
-  const finalUrl = searchParams.toString() ? `${url}?${searchParams.toString()}` : url;
+  const finalUrl = searchParams.toString()
+    ? `${url}?${searchParams.toString()}`
+    : url;
 
   const getHeaders = () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("access_token")
+        : null;
     const headers = new Headers(fetchOptions.headers || {});
-    if (!headers.has('Content-Type')) {
-      headers.set('Content-Type', 'application/json');
+    if (!headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
     }
     if (token) {
       if (useProxy) {
-        headers.set('x-client-token', token);
+        headers.set("x-client-token", token);
       } else {
-        headers.set('Authorization', `Bearer ${token}`);
+        headers.set("Authorization", `Bearer ${token}`);
       }
     }
     return headers;

@@ -12,7 +12,6 @@ interface UserDetailPanelProps {
 
 export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserDetailPanelProps) {
   const [user, setUser] = useState<AdminUser>(initialUser);
-  const [loading, setLoading] = useState(true);
   const [showSensitiveInfo, setShowSensitiveInfo] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -21,14 +20,11 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
   useEffect(() => {
     async function fetchDetails() {
       try {
-        setLoading(true);
         const detailedUser = await getAdminUserById(initialUser.id);
         setUser(detailedUser);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Failed to load user details", err);
         setUser(initialUser);
-      } finally {
-        setLoading(false);
       }
     }
     fetchDetails();
@@ -51,9 +47,10 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
       setShowDeleteConfirm(false);
       onSuccess();
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to delete user", err);
-      alert(err?.message || "Failed to delete user. Please try again.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete user. Please try again.";
+      alert(errorMessage);
     } finally {
       setIsDeleting(false);
     }
@@ -65,9 +62,10 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
       await updateUserKyc(user.id, status);
       setUser(prev => ({ ...prev, kycStatus: status }));
       onSuccess();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to update KYC status", err);
-      alert(err?.message || "Failed to update KYC status. Please try again.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to update KYC status. Please try again.";
+      alert(errorMessage);
     } finally {
       setIsUpdatingKyc(false);
     }
@@ -231,7 +229,7 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
       {showDeleteConfirm && (
         <>
           <div className="fixed inset-0 bg-black/50 z-[60]" onClick={() => setShowDeleteConfirm(false)} />
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl p-6 z-[70] w-full max-w-sm mx-4">
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl p-6 z-[70] w-full max-sm mx-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete User</h3>
             <p className="text-sm text-gray-600 mb-6">Are you sure you want to delete this user? This action cannot be undone.</p>
             <div className="flex gap-3 justify-end">
