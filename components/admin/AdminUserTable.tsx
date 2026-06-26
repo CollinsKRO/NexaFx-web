@@ -1,6 +1,8 @@
 'use client';
 
+import { Users } from 'lucide-react';
 import { AdminUser } from '@/lib/api/admin';
+import { EmptyState } from '@/components/shared/empty-state';
 
 interface AdminUserTableProps {
   users: AdminUser[];
@@ -8,6 +10,16 @@ interface AdminUserTableProps {
 }
 
 export function AdminUserTable({ users, onUserClick }: AdminUserTableProps) {
+  if (users.length === 0) {
+    return (
+      <EmptyState
+        icon={<Users className="h-16 w-16" />}
+        title="No users yet"
+        description="Users will appear here once they sign up."
+      />
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg overflow-hidden">
       <table className="w-full">
@@ -31,14 +43,7 @@ export function AdminUserTable({ users, onUserClick }: AdminUserTableProps) {
           </tr>
         </thead>
         <tbody>
-          {users.length === 0 ? (
-            <tr>
-              <td colSpan={4} className="py-10 text-center text-gray-500">
-                No users found.
-              </td>
-            </tr>
-          ) : (
-            users.map((user) => (
+          {users.map((user) => (
               <tr
                 key={user.id}
                 onClick={() => onUserClick(user)}
@@ -64,8 +69,7 @@ export function AdminUserTable({ users, onUserClick }: AdminUserTableProps) {
                   <span className="text-sm font-semibold text-gray-900">{user.createdAt}</span>
                 </td>
               </tr>
-            ))
-          )}
+          ))}
         </tbody>
       </table>
     </div>

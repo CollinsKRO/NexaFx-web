@@ -2,10 +2,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Filter, Loader2 } from 'lucide-react';
+import { Search, Filter, Loader2, UserX } from 'lucide-react';
 import { AdminUser, getAdminUsers } from '@/lib/api/admin';
 import { AdminUserTable } from '@/components/admin/AdminUserTable';
 import { UserDetailPanel } from '@/components/admin/UserDetailPanel';
+import { EmptyState } from '@/components/shared/empty-state';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -143,8 +144,21 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {/* Loader / Error / Table Content */}
-      {error ? (
+      {/* Empty state for search with no results */}
+      {!loading && !error && users.length === 0 && searchQuery ? (
+        <EmptyState
+          icon={<UserX className="h-16 w-16" />}
+          title="No users found"
+          description="No users match your search. Try a different email or username."
+          action={{ label: "Clear search", onClick: () => { setSearchQuery(""); loadUsers(); } }}
+        />
+      ) : !loading && !error && users.length === 0 && !searchQuery ? (
+        <EmptyState
+          icon={<UserX className="h-16 w-16" />}
+          title="No users yet"
+          description="Users will appear here once they sign up."
+        />
+      ) : error ? (
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center text-red-600">
           <p className="font-semibold">{error}</p>
           <button 

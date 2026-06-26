@@ -1,5 +1,7 @@
+import { ListFilter } from "lucide-react";
 import { AdminTransaction } from "@/lib/api/admin";
 import { TypeTransaction } from "./TypeTransaction";
+import { EmptyState } from "@/components/shared/empty-state";
 
 interface TableTransactionProps {
   transactions: AdminTransaction[];
@@ -61,6 +63,13 @@ export function TableTransaction({ transactions }: TableTransactionProps) {
           )}
         </tbody>
       </table>
+      {transactions.length === 0 && (
+        <EmptyState
+          icon={<ListFilter className="h-16 w-16" />}
+          title="No transactions found"
+          description="No transactions match the current filters."
+        />
+      )}
     </div>
   );
 }

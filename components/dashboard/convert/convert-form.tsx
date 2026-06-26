@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { ChevronDown, AlertCircle, ArrowDownUp, Loader2 } from "lucide-react";
+import { ChevronDown, AlertCircle, ArrowDownUp, Loader2, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getBalances } from "@/lib/api/wallet";
 import { createSwap } from "@/lib/api/transactions";
 import { getExchangeRate } from "@/lib/api/exchange-rates";
 import { getRequestErrorMessage } from "@/lib/api-client";
+import { EmptyState } from "@/components/shared/empty-state";
 
 interface CurrencyOption {
   id: string;
@@ -36,6 +37,7 @@ export function ConvertForm() {
   const [isLoadingRate, setIsLoadingRate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rateError, setRateError] = useState<string | null>(null);
+  const [rateRetryCount, setRateRetryCount] = useState(0);
   const hadExchangeRateRef = useRef(false);
 
   const fromCurrencyData =
@@ -90,7 +92,7 @@ export function ConvertForm() {
       .finally(() => {
         setIsLoadingRate(false);
       });
-  }, [fromCurrency, toCurrency]);
+  }, [fromCurrency, toCurrency, rateRetryCount]);
 
   const convertedAmount = useMemo(() => {
     if (!amount || isNaN(parseFloat(amount)) || exchangeRate === 0) return "";
@@ -438,12 +440,12 @@ export function ConvertForm() {
               </span>
             </div>
           ) : rateError ? (
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
-              <span className="text-sm font-medium flex items-center gap-2">
-                <AlertCircle className="h-4 w-4" />
-                {rateError}
-              </span>
-            </div>
+            <EmptyState
+              icon={<BarChart3 className="h-12 w-12" />}
+              title="Rates unavailable"
+              description="We're having trouble fetching exchange rates. Please try again in a few minutes."
+              action={{ label: "Retry", onClick: () => setRateRetryCount((c) => c + 1) }}
+            />
           ) : amount && exchangeRate > 0 ? (
             <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-muted/30 border border-border/50">
               <span className="text-sm text-muted-foreground">
