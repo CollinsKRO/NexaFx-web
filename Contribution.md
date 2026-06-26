@@ -7,7 +7,7 @@ Thank you for your interest in contributing to **NexaFx**! 🚀 We welcome contr
 
 ⚠️ **Avoid Generic Comments:** Comments such as 🚫
 "Can I help with this?" 🚫
-"I’d love to contribute!" 🚫
+"I'd love to contribute!" 🚫
 "Check out my profile!" or 🚫
 "Can I work on this?"... these will not be considered.
 
