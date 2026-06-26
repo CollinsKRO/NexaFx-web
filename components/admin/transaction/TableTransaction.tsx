@@ -1,4 +1,4 @@
-import { type AdminTransaction } from "@/lib/api/admin";
+import { AdminTransaction } from "@/lib/api/admin";
 import { TypeTransaction } from "./TypeTransaction";
 
 interface TableTransactionProps {
@@ -22,41 +22,42 @@ export function TableTransaction({ transactions }: TableTransactionProps) {
             </th>
             <th className="py-4 hidden sm:table-cell">Date</th>
             <th className="py-4">Transaction ID</th>
-            <th className="py-4 sm:hidden">TYpe</th>
+            <th className="py-4 sm:hidden">Type</th>
           </tr>
         </thead>
         <tbody>
-          {transactions.map((item) => (
-            <tr key={item.id} className="text-[14px] font-medium ">
-              <td className="hidden sm:table-cell font-semibold pl-8 py-5 border border-transparent border-b-[#00000033]">
-                <span className="inline-block rounded-full size-2.5 bg-[#66FF47] mr-3" />
-                {item.currency}
-                <span className="pl-1">{item.amount}</span>
-              </td>
-              <td className="hidden sm:table-cell py-5 border border-transparent border-b-[#00000033]">
-                <TypeTransaction>{item.type}</TypeTransaction>
-              </td>
-              <td className="py-5 border border-transparent border-b-[#00000033]">
-                <span className="ml-8 sm:hidden inline-block rounded-full size-2.5 bg-[#66FF47] mr-3" />
-                {item.username}
-              </td>
-              <td className="hidden sm:table-cell py-5 border border-transparent border-b-[#00000033]">
-                {item.date}
-              </td>
-              <td className="py-5 border border-transparent border-b-[#00000033]">
-                {item.txId}
-              </td>
-              <td className="sm:hidden  py-5 border border-transparent border-b-[#00000033]">
-                <TypeTransaction>{item.type}</TypeTransaction>
-              </td>
-            </tr>
-          ))}
-          {transactions.length === 0 && (
+          {transactions.length === 0 ? (
             <tr>
-              <td colSpan={6} className="text-center py-8 text-gray-500 font-medium">
+              <td colSpan={6} className="py-10 text-center text-gray-500">
                 No transactions found.
               </td>
             </tr>
+          ) : (
+            transactions.map((item) => (
+              <tr key={item.id} className="text-[14px] font-medium ">
+                <td className="hidden sm:table-cell font-semibold pl-8 py-5 border border-transparent border-b-[#00000033]">
+                  <span className="inline-block rounded-full size-2.5 bg-[#66FF47] mr-3" />
+                  {item.currency}
+                  <span className="pl-1">{item.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </td>
+                <td className="hidden sm:table-cell py-5 border border-transparent border-b-[#00000033]">
+                  <TypeTransaction>{item.type}</TypeTransaction>
+                </td>
+                <td className="py-5 border border-transparent border-b-[#00000033]">
+                  <span className="ml-8 sm:hidden inline-block rounded-full size-2.5 bg-[#66FF47] mr-3" />
+                  {item.username}
+                </td>
+                <td className="hidden sm:table-cell py-5 border border-transparent border-b-[#00000033]">
+                  {item.date}
+                </td>
+                <td className="py-5 border border-transparent border-b-[#00000033]">
+                  {item.txId}
+                </td>
+                <td className="sm:hidden  py-5 border border-transparent border-b-[#00000033]">
+                  <TypeTransaction>{item.type}</TypeTransaction>
+                </td>
+              </tr>
+            ))
           )}
         </tbody>
       </table>
