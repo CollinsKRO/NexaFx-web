@@ -3,6 +3,15 @@ import { apiClient } from '../api-client';
 export type TransactionStatus = 'Success' | 'Pending' | 'Failed';
 export type TransactionType = 'Deposit' | 'Withdraw' | 'Convert';
 
+export interface TransactionFilters {
+  type?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+}
+
 export interface Transaction {
     id: string;
     type: TransactionType;
@@ -20,19 +29,21 @@ export interface Transaction {
 }
 
 export interface TransactionQueryDto {
-    page?: number;
-    limit?: number;
-    search?: string;
-    type?: string;
-    from?: string;
-    to?: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+  type?: string;
+  status?: string;
+  from?: string;
+  to?: string;
 }
 
 export interface PaginatedTransactions {
-    data: Transaction[];
-    total: number;
-    page: number;
-    limit: number;
+  data: Transaction[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages?: number;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -92,54 +103,67 @@ function mapTransaction(dto: Record<string, any>): Transaction {
 }
 
 export async function getTransactions(
-    query: TransactionQueryDto = {}
+  query: TransactionQueryDto & TransactionFilters = {}
 ): Promise<PaginatedTransactions> {
-    const params: Record<string, string> = {};
-    if (query.page) params.page = String(query.page);
-    if (query.limit) params.limit = String(query.limit);
-    if (query.search) params.search = query.search;
-    if (query.type && query.type !== 'All') {
-        const typeParam =
-            query.type === 'Withdraw' ? 'withdrawal' : query.type.toLowerCase();
-        params.type = typeParam;
-    }
-    if (query.from) params.from = query.from;
-    if (query.to) params.to = query.to;
+  const params: Record<string, string> = {};
+  if (query.page) params.page = String(query.page);
+  if (query.limit) params.limit = String(query.limit);
+  if (query.search) params.search = query.search;
+  
+  const typeValue = query.type && query.type !== "All" ? query.type : undefined;
+  if (typeValue) {
+    const typeParam = typeValue === "Withdraw" ? "withdrawal" : typeValue.toLowerCase();
+    params.type = typeParam;
+  }
+  
+  const statusValue = query.status && query.status !== "All" ? query.status : undefined;
+  if (statusValue) {
+    params.status = statusValue.toLowerCase();
+  }
+
+  const from = query.from || query.startDate;
+  if (from) params.from = from;
+  
+  const to = query.to || query.endDate;
+  if (to) params.to = to;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const json = await apiClient<any>('/transactions', {
         params,
     });
 
-    if (Array.isArray(json)) {
-        return {
-            data: json.map(mapTransaction),
-            total: json.length,
-            page: query.page ?? 1,
-            limit: query.limit ?? 10,
-        };
-    }
+  let dataList: any[] = [];
+  let total = 0;
+  let page = query.page ?? 1;
+  let limit = query.limit ?? 20;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (json.data ?? json.transactions ?? json.items ?? []) as Record<string, any>[];
-    const total = (json.total ?? json.totalCount ?? json.count ?? data.length) as number;
-    const page = (json.page ?? query.page ?? 1) as number;
-    const limit = (json.limit ?? query.limit ?? 10) as number;
+  if (Array.isArray(json)) {
+    dataList = json;
+    total = json.length;
+  } else {
+    dataList = (json.data ?? json.transactions ?? json.items ?? []) as Record<string, any>[];
+    total = (json.total ?? json.totalCount ?? json.count ?? dataList.length) as number;
+    page = (json.page ?? query.page ?? 1) as number;
+    limit = (json.limit ?? query.limit ?? 20) as number;
+  }
 
-    return {
-        data: data.map(mapTransaction),
-        total,
-        page,
-        limit,
-    };
+  const totalPages = Math.ceil(total / limit);
+
+  return { 
+    data: dataList.map(mapTransaction), 
+    total, 
+    page, 
+    limit,
+    totalPages
+  };
 }
 
 export async function getTransactionById(id: string): Promise<Transaction> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const json = await apiClient<any>(`/transactions/${id}`);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const dto = (json.data ?? json) as Record<string, any>;
-    return mapTransaction(dto);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const json = await apiClient<any>(`/transactions/${id}`);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dto = (json.data ?? json) as Record<string, any>;
+  return mapTransaction(dto);
 }
 
 // ==================== Withdrawal ====================
