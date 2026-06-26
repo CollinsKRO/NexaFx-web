@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter, Manrope } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
+import { PwaInstallPrompt } from "@/components/shared/pwa-install-prompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,15 +14,34 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-export const manrope = Manrope({
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+const manrope = Manrope({
   subsets: ["latin"],
   variable: "--font-manrope",
 });
 
 export const metadata: Metadata = {
   title: "NexaFx",
-  description: "NexaFx Web Application",
+  description: "Multi-currency finance on Stellar",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "NexaFx",
+  },
+  icons: {
+    apple: [
+      { url: "/icons/icon-152x152.png", sizes: "152x152", type: "image/png" },
+    ],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#F39A00",
 };
 
 export default function RootLayout({
@@ -36,6 +56,7 @@ export default function RootLayout({
       >
         {children}
         <Toaster />
+        <PwaInstallPrompt />
       </body>
     </html>
   );
