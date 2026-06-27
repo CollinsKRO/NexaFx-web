@@ -13,10 +13,9 @@ import { AccountIcon, SecurityIcon, IdentityIcon } from "../icons";
 import { History, LogIn, KeyRound, Shield, ArrowUpFromLine, UserX, UserCheck, ShieldOff, Edit3, AlertCircle } from "lucide-react";
 import { AccountInfo } from "./account-info";
 import { Security } from "./security";
-import { Notification } from "./notification";
+import { TwoFactorAuth } from "./two-factor";
+import { ActivityLog } from "./activity-log";
 import { NotificationPreferences } from "./notification-preferences";
-import { WebAuthnSection } from "./webauthn-section";
-import { Bell } from "lucide-react";
 import { ProfileOverview } from "../profile/profile-overview";
 import { PersonalInfo } from "../profile/personal-info";
 import { VerificationBanner } from "../profile/verification-banner";
@@ -55,6 +54,13 @@ export function TabsSettings() {
             aria-hidden="true"
           />
           Danger Zone
+        </TabsTrigger>
+        <TabsTrigger value="activity">
+          <History
+            color={isActiveTap === "activity" ? "#000" : ""}
+            className="size-3.5"
+          />
+          Activity
         </TabsTrigger>
         <TabsTrigger value="activity">
           <History

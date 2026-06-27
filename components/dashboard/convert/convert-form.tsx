@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { ChevronDown, AlertCircle, ArrowDownUp, Loader2 } from "lucide-react";
+import { InfoIcon } from "@/components/ui/info-icon";
 import { cn } from "@/lib/utils";
 import { getBalances } from "@/lib/api/wallet";
 import { createSwap } from "@/lib/api/transactions";
@@ -457,11 +458,17 @@ export function ConvertForm() {
             </div>
           ) : amount && exchangeRate > 0 ? (
             <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-muted/30 border border-border/50">
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-muted-foreground inline-flex items-center gap-1">
                 Exchange Rate
+                <InfoIcon
+                  content="The spread is the difference between the buy and sell price"
+                  size="sm"
+                  side="top"
+                />
               </span>
               <span className="text-sm font-semibold text-foreground">
-                1 {fromCurrency} ={" "}
+                 1 {fromCurrency} ={" "}
+                 <InfoIcon tooltip="Exchange rate includes a 0.5% conversion fee" />
                 {exchangeRate.toLocaleString(undefined, {
                   minimumFractionDigits:
                     fromCurrency === "ETH" || toCurrency === "ETH" ? 2 : 2,
@@ -476,9 +483,14 @@ export function ConvertForm() {
 
         {/* Info Section */}
         <div className="space-y-2 pt-2">
-          <p className="text-xs text-muted-foreground text-center">
+          <p className="text-xs text-muted-foreground text-center inline-flex items-center justify-center gap-1">
             Exchange rates updated in real-time. Your conversion will be locked
             at checkout.
+            <InfoIcon
+              content="Slippage may occur during high volatility — the final rate may differ slightly"
+              size="sm"
+              side="top"
+            />
           </p>
         </div>
 

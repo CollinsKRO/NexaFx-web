@@ -1,8 +1,11 @@
 "use client";
 import { AccountOverview } from "@/components/dashboard/account-overview";
 import DepositMethods from "@/components/dashboard/deposit";
+import { ConversionChart } from "@/components/dashboard/conversion-chart";
 import { MarketOverview } from "@/components/dashboard/market-overview";
+import { PortfolioChart } from "@/components/dashboard/portfolio-chart";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
+import { ConversionHistory } from "@/components/dashboard/conversion-history";
 import { WithdrawalModal } from "@/components/dashboard/withdrawal/WithdrawalModal";
 import { useWithdrawalStore } from "@/hooks/useWithdrawalStore";
 import { Download, Upload } from "lucide-react";
@@ -51,7 +54,13 @@ export default function DashboardPage() {
               <MarketOverview />
             </div>
 
+            <div className="px-3 md:px-0">
+              <ConversionChart />
+            </div>
+
             <RecentTransactions />
+
+            <ConversionHistory />
           </div>
         </>
       )}

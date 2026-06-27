@@ -17,33 +17,8 @@ export interface UpdateProfileDto {
   phone?: string;
 }
 
-export interface NotificationPreferences {
-  email: {
-    transactionSuccess: boolean
-    transactionFailed: boolean
-    loginAlert: boolean
-    marketingUpdates: boolean
-    weeklyStatement: boolean
-  }
-  push: {
-    transactionSuccess: boolean
-    transactionFailed: boolean
-    loginAlert: boolean
-    priceAlerts: boolean
-  }
-  inApp: {
-    transactionSuccess: boolean
-    transactionFailed: boolean
-    loginAlert: boolean
-    systemAnnouncements: boolean
-  }
-}
-
-export const getNotificationPreferences = (): Promise<NotificationPreferences> =>
-  apiClient("/users/notification-preferences", { method: "GET", useProxy: false })
-
-export const updateNotificationPreferences = (updates: Partial<NotificationPreferences>): Promise<NotificationPreferences> =>
-  apiClient("/users/notification-preferences", { method: "PATCH", useProxy: false, body: JSON.stringify(updates) })
+export const sendWeeklyStatement = (): Promise<void> =>
+  apiClient('/users/send-weekly-statement', { method: 'POST', useProxy: false });
 
 export async function deleteProfile (): Promise<void> {
   return apiClient("/users/profile", {
