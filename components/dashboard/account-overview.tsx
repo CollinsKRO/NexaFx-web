@@ -12,6 +12,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useEffect, useState } from "react";
 import { getBalances } from "@/lib/api/wallet";
 import { getProfile } from "@/lib/api/users";
+import { haptics } from "@/lib/utils/haptics";
 
 const truncateAddress = (addr: string) =>
   `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -34,6 +35,39 @@ export function AccountOverview({
   const [balance, setBalance] = useState("");
   const [ngnBalance, setNgnBalance] = useState("");
   const [usdBalance, setUsdBalance] = useState("");
+
+  const wsBalance = useWebSocket((s) => s.balance);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const subscribe = useWebSocket((s) => s.subscribe);
+
+  useEffect(() => {
+    if (accessToken) {
+      subscribe(accessToken);
+    }
+  }, [accessToken, subscribe]);
+
+  useEffect(() => {
+    if (wsBalance && wsBalance.length > 0) {
+      setBalances(wsBalance);
+      setError(null);
+
+      const ngnItem = wsBalance.find(
+        (b) => b.currency.toUpperCase() === "NGN"
+      );
+      const usdItem = wsBalance.find(
+        (b) => b.currency.toUpperCase() === "USD"
+      );
+      const firstItem = wsBalance[0];
+
+      if (ngnItem) {
+        setBalance(formatCurrency(ngnItem.amount, "NGN"));
+      } else if (usdItem) {
+        setBalance(formatCurrency(usdItem.amount, "USD"));
+      } else {
+        setBalance(formatCurrency(firstItem.amount, firstItem.currency));
+      }
+    }
+  }, [wsBalance]);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +131,7 @@ export function AccountOverview({
     try {
       await navigator.clipboard.writeText(walletAddress);
       setCopied(true);
+      haptics.light();
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy address:", err);

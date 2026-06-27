@@ -14,6 +14,8 @@ interface TransactionDetailsProps {
 export function TransactionDetails({ transaction, open, onClose }: TransactionDetailsProps) {
     const [detail, setDetail] = useState<Transaction | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const { swipeOffset, onTouchStart, onTouchMove, onTouchEnd } =
+        useSwipeToClose({ onClose, direction: "down", threshold: 80 });
 
     useEffect(() => {
         if (open) {
@@ -79,6 +81,13 @@ export function TransactionDetails({ transaction, open, onClose }: TransactionDe
                     "rounded-t-3xl h-[85vh] md:h-auto",
                     "animate-in slide-in-from-bottom duration-300 md:slide-in-from-right md:duration-300"
                 )}
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+                style={{
+                    transform: swipeOffset > 0 ? `translateY(${swipeOffset}px)` : undefined,
+                    transition: swipeOffset === 0 ? undefined : 'none',
+                }}
             >
                 {/* Header */}
                 <div className="flex-none flex items-center justify-between p-6 border-b border-border/10 md:border-none">

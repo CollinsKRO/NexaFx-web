@@ -31,6 +31,7 @@ export function WithdrawalSuccess() {
         if (transactionId) {
             navigator.clipboard.writeText(transactionId);
             setCopied(true);
+            haptics.light();
             setTimeout(() => setCopied(false), 2000);
         }
     };

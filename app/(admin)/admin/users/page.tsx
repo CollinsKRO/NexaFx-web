@@ -16,18 +16,22 @@ export default function UsersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
-  
+
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   // Debounce search query
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchQuery);
-      setCurrentPage(1); // Reset to page 1 on new search
+      setCurrentPage(1);
     }, 300);
 
     return () => {
@@ -46,6 +50,7 @@ export default function UsersPage() {
       setUsers(res.data);
       setTotalCount(res.total);
       setError(null);
+      setSelectedIds([]);
     } catch (err: any) {
       console.error('Failed to load admin users', err);
       setError(err?.message || 'Failed to fetch users. Please try again.');
@@ -94,6 +99,26 @@ export default function UsersPage() {
     setSearchQuery('');
   };
 
+  const handleBulkActivate = () => {
+    setUsers((prev) =>
+      prev.map((u) => (selectedIds.includes(u.id) ? { ...u, isActive: true } : u)),
+    );
+    setSelectedIds([]);
+  };
+
+  const handleBulkDeactivate = () => {
+    setUsers((prev) =>
+      prev.map((u) => (selectedIds.includes(u.id) ? { ...u, isActive: false } : u)),
+    );
+    setSelectedIds([]);
+  };
+
+  const handleBulkDelete = () => {
+    setUsers((prev) => prev.filter((u) => !selectedIds.includes(u.id)));
+    setSelectedIds([]);
+    setConfirmDelete(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* Mobile Header */}
@@ -116,10 +141,9 @@ export default function UsersPage() {
       {/* Desktop Header */}
       <div className="hidden lg:block">
         <h1 className="text-2xl font-semibold text-gray-900 mb-6">User-list</h1>
-        
+
         {/* Top Bar */}
         <div className="flex items-center justify-between gap-4">
-          {/* Search */}
           <div className="flex-1 max-w-md relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -131,14 +155,10 @@ export default function UsersPage() {
             />
           </div>
 
-          {/* Right Side */}
           <div className="flex items-center gap-3">
-            {/* Count Badge */}
             <div className="bg-[#FFD552] text-gray-900 px-4 py-2 rounded-full text-sm font-medium">
               All {totalCount}
             </div>
-
-            {/* Filter Button */}
             <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
               <Filter className="w-4 h-4" />
               <span className="text-sm font-medium">FILTER</span>

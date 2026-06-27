@@ -41,7 +41,12 @@ export default function NotificationsPage() {
     removeNotification(id);
   };
 
+  const handleRefresh = useCallback(async () => {
+    await fetchNotifications();
+  }, [fetchNotifications]);
+
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="max-w-2xl mx-auto">
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         {isLoading ? (
@@ -81,5 +86,6 @@ export default function NotificationsPage() {
         )}
       </div>
     </div>
+    </PullToRefresh>
   );
 }
