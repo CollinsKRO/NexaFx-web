@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Search, Filter, Loader2 } from 'lucide-react';
 import { AdminUser, getAdminUsers } from '@/lib/api/admin';
 import { AdminUserTable } from '@/components/admin/AdminUserTable';
+import { BulkActionBar } from '@/components/admin/bulk-action-bar';
 import { UserDetailPanel } from '@/components/admin/UserDetailPanel';
 
 const ITEMS_PER_PAGE = 10;
@@ -19,6 +20,7 @@ export default function UsersPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Debounce search query
   useEffect(() => {
@@ -186,6 +188,8 @@ export default function UsersPage() {
             <AdminUserTable 
               users={users} 
               onUserClick={setSelectedUser}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
             />
           </div>
 
@@ -244,6 +248,13 @@ export default function UsersPage() {
           </div>
         </>
       )}
+
+      {/* Bulk Action Bar */}
+      <BulkActionBar
+        selectedIds={selectedIds}
+        onClear={() => setSelectedIds([])}
+        onSuccess={loadUsers}
+      />
 
       {/* User Detail Panel */}
       {selectedUser && (

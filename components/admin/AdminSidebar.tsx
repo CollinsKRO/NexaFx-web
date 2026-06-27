@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useState } from "react";
 
-import { BarChart3, Bell, Users, Settings } from "lucide-react";
+import { Activity, BarChart3, Bell, ShieldCheck, Users } from "lucide-react";
 
 type Props = {
     isOpen: boolean;

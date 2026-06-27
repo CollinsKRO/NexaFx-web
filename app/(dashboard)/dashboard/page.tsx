@@ -1,6 +1,7 @@
 "use client";
 import { AccountOverview } from "@/components/dashboard/account-overview";
 import DepositMethods from "@/components/dashboard/deposit";
+import { ConversionChart } from "@/components/dashboard/conversion-chart";
 import { MarketOverview } from "@/components/dashboard/market-overview";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { WithdrawalModal } from "@/components/dashboard/withdrawal/WithdrawalModal";
@@ -49,6 +50,10 @@ export default function DashboardPage() {
 
             <div className="space-y-4 px-3 md:px-0">
               <MarketOverview />
+            </div>
+
+            <div className="px-3 md:px-0">
+              <ConversionChart />
             </div>
 
             <RecentTransactions />

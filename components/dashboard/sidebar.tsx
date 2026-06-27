@@ -21,6 +21,7 @@ const menuItems = [
   { icon: Mail, label: "Transactions", href: "/transactions" },
   { icon: Gift, label: "Refer & Earn", href: "/referrals" },
   { icon: CircleUserRound, label: "Settings", href: "/settings" },
+  { icon: CalendarClock, label: "Schedules", href: "/schedules" },
 ];
 
 interface SidebarProps {
