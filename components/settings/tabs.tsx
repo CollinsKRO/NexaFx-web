@@ -60,6 +60,13 @@ export function TabsSettings() {
           />
           Activity
         </TabsTrigger>
+        <TabsTrigger value="activity">
+          <History
+            color={isActiveTap === "activity" ? "#000" : ""}
+            className="size-3.5"
+          />
+          Activity
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="profile">
