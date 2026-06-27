@@ -35,6 +35,39 @@ export function AccountOverview({
   const [ngnBalance, setNgnBalance] = useState("");
   const [usdBalance, setUsdBalance] = useState("");
 
+  const wsBalance = useWebSocket((s) => s.balance);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const subscribe = useWebSocket((s) => s.subscribe);
+
+  useEffect(() => {
+    if (accessToken) {
+      subscribe(accessToken);
+    }
+  }, [accessToken, subscribe]);
+
+  useEffect(() => {
+    if (wsBalance && wsBalance.length > 0) {
+      setBalances(wsBalance);
+      setError(null);
+
+      const ngnItem = wsBalance.find(
+        (b) => b.currency.toUpperCase() === "NGN"
+      );
+      const usdItem = wsBalance.find(
+        (b) => b.currency.toUpperCase() === "USD"
+      );
+      const firstItem = wsBalance[0];
+
+      if (ngnItem) {
+        setBalance(formatCurrency(ngnItem.amount, "NGN"));
+      } else if (usdItem) {
+        setBalance(formatCurrency(usdItem.amount, "USD"));
+      } else {
+        setBalance(formatCurrency(firstItem.amount, firstItem.currency));
+      }
+    }
+  }, [wsBalance]);
+
   useEffect(() => {
     let cancelled = false;
 

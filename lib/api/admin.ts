@@ -149,6 +149,41 @@ export async function deleteAdminUser(id: string): Promise<void> {
     });
 }
 
+export interface KycSubmission {
+  id: string;
+  userName: string;
+  email: string;
+  documentType: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  submittedAt: string;
+  reviewedAt?: string;
+}
+
+export async function getAdminKycSubmissions(): Promise<KycSubmission[]> {
+  const response = await apiClient<any>('/admin/kyc', {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  const data = response?.data ?? response?.submissions ?? response ?? [];
+  return (Array.isArray(data) ? data : []).map((item: any) => ({
+    id: item.id ?? item._id ?? '',
+    userName: item.userName ?? item.username ?? item.user?.name ?? '',
+    email: item.email ?? item.user?.email ?? '',
+    documentType: item.documentType ?? item.document_type ?? 'Unknown',
+    status: item.status ?? 'Pending',
+    submittedAt: item.submittedAt ?? item.createdAt ?? new Date().toISOString(),
+    reviewedAt: item.reviewedAt ?? undefined,
+  }));
+}
+
+export async function updateKycStatus(id: string, status: 'Approved' | 'Rejected'): Promise<void> {
+  await apiClient<void>(`/admin/kyc/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status }),
+  });
+}
+
 export async function updateUserKyc(id: string, status: 'Verified' | 'Unverified'): Promise<void> {
     await apiClient<void>(`/admin/users/${id}/kyc`, {
         method: 'PATCH',
@@ -234,4 +269,85 @@ export async function getAdminTransactions(query: AdminTransactionsQuery = {}): 
     });
 
     return { data: mappedData, total };
+}
+
+export interface Announcement {
+    id: string;
+    title: string;
+    message: string;
+    status: 'Active' | 'Inactive';
+    colorTheme: string;
+    targetPage: string;
+    createdAt: string;
+}
+
+export async function getAnnouncements(): Promise<Announcement[]> {
+    const response = await apiClient<any>('/admin/announcements', {
+        method: 'GET',
+        headers: getAuthHeaders(),
+    });
+    const data = response?.data ?? response?.announcements ?? (Array.isArray(response) ? response : []);
+    return data.map((item: any) => ({
+        id: item.id ?? item._id ?? '',
+        title: item.title ?? '',
+        message: item.message ?? '',
+        status: item.status === 'Active' || item.status === 'active' ? 'Active' as const : 'Inactive' as const,
+        colorTheme: item.colorTheme ?? 'yellow',
+        targetPage: item.targetPage ?? 'all',
+        createdAt: item.createdAt
+            ? new Date(item.createdAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+              })
+            : '',
+    }));
+}
+
+export async function createAnnouncement(data: {
+    title: string;
+    message: string;
+    colorTheme: string;
+    targetPage: string;
+}): Promise<Announcement> {
+    const response = await apiClient<any>('/admin/announcements', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+    });
+    const item = response?.data ?? response;
+    return {
+        id: item.id ?? item._id ?? '',
+        title: item.title ?? data.title,
+        message: item.message ?? data.message,
+        status: 'Active',
+        colorTheme: item.colorTheme ?? data.colorTheme,
+        targetPage: item.targetPage ?? data.targetPage,
+        createdAt: item.createdAt
+            ? new Date(item.createdAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+              })
+            : new Date().toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+              }),
+    };
+}
+
+export async function toggleAnnouncement(id: string, status: 'Active' | 'Inactive'): Promise<void> {
+    await apiClient<void>(`/admin/announcements/${id}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ status }),
+    });
+}
+
+export async function deleteAnnouncement(id: string): Promise<void> {
+    await apiClient<void>(`/admin/announcements/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+    });
 }

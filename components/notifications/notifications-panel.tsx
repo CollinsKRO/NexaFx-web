@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useNotificationsStore } from "@/hooks/use-notifications-store";
 import { NotificationItem } from "./notification-item";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 
 function PanelSkeleton() {
   return (
@@ -34,6 +35,12 @@ export function NotificationsPanel() {
     fetchNotifications,
     unreadCount,
   } = useNotificationsStore();
+
+  useSwipeToClose({
+    onSwipe: close,
+    direction: "right",
+    disabled: !isOpen,
+  });
 
   useEffect(() => {
     if (isOpen) {
