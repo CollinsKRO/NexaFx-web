@@ -11,7 +11,7 @@ interface TransactionTableProps {
 
 export function TransactionTable({ transactions, onTransactionClick }: TransactionTableProps) {
   return (
-    <div className="rounded-md border bg-card text-card-foreground shadow-sm overflow-x-auto">
+    <div className="rounded-md border bg-card text-card-foreground shadow-sm overflow-x-auto w-full max-w-[100vw]">
       <table className="w-full min-w-[600px] text-left">
         <thead>
           <tr className="border-b bg-muted/30">

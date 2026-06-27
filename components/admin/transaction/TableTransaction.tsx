@@ -7,8 +7,8 @@ interface TableTransactionProps {
 
 export function TableTransaction({ transactions }: TableTransactionProps) {
   return (
-    <div>
-      <table className="rounded-t-2xl bg-white w-full text-left " role="table">
+    <div className="overflow-x-auto w-full max-w-[100vw]">
+      <table className="rounded-t-2xl bg-white w-full min-w-[600px] text-left " role="table">
         <thead className="font-bold text-[12px] ">
           <tr className="border border-transparent border-b-[#00000033]">
             <th className="py-4 pl-8 hidden sm:table-cell">

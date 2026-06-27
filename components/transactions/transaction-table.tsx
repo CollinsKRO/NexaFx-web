@@ -12,7 +12,7 @@ interface TransactionTableProps {
 export function TransactionTable({ transactions, onSelectTransaction }: TransactionTableProps) {
     return (
         <div className="hidden md:block rounded-md border bg-card text-card-foreground shadow-sm overflow-x-auto">
-            <table className="w-full min-w-190 text-left">
+            <table className="w-full min-w-[600px] text-left">
                 <thead>
                     <tr className="border-b bg-muted/30">
                         <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</th>

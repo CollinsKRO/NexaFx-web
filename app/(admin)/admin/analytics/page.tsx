@@ -226,8 +226,8 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Recent users table */}
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                <table className="w-full text-sm">
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto w-full">
+                <table className="w-full min-w-[800px] text-sm">
                     <thead>
                         <tr className="border-b border-gray-100">
                             <th className="px-6 py-4 text-left">

@@ -276,7 +276,7 @@ function ResetPasswordContent() {
 
       {/* Mobile View */}
       <div className="md:hidden flex items-center justify-center min-h-screen px-4">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 sm:p-8">
           <div className="mb-8">
             <div className="flex justify-center mb-6">
               <Image

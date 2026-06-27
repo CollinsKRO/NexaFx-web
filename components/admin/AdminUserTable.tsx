@@ -9,8 +9,8 @@ interface AdminUserTableProps {
 
 export function AdminUserTable({ users, onUserClick }: AdminUserTableProps) {
   return (
-    <div className="bg-white rounded-lg overflow-hidden">
-      <table className="w-full">
+    <div className="bg-white rounded-lg overflow-x-auto w-full max-w-[100vw]">
+      <table className="w-full min-w-[800px] text-left">
         <thead>
           <tr className="border-b border-gray-200">
             <th className="text-left py-4 px-6 text-sm font-medium text-gray-600 uppercase tracking-wider">

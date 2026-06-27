@@ -28,7 +28,7 @@ export default function PushNotificationTable({
     };
 
     return (
-        <div className="bg-white rounded-lg  overflow-x-auto">
+        <div className="bg-white rounded-lg overflow-x-auto w-full max-w-[100vw]">
             <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-left h-11 lg:h-16.5">
                     <tr>

@@ -51,7 +51,7 @@ export function Topbar() {
       <div className="flex items-center gap-4">
         <button
           onClick={openSidebar}
-          className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2"
+          className="md:hidden flex items-center justify-center min-h-[44px] min-w-[44px] p-2 hover:bg-muted rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2"
           aria-label="Open navigation menu"
         >
           <Menu className="h-6 w-6" />
@@ -64,7 +64,7 @@ export function Topbar() {
       <div className="flex items-center gap-2 sm:gap-4">
         <button
           onClick={toggleTheme}
-          className="p-2 hover:bg-muted rounded-full transition-colors text-foreground focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2"
+          className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 hover:bg-muted rounded-full transition-colors text-foreground focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2"
           aria-label={
             isDarkMode ? "Switch to light mode" : "Switch to dark mode"
           }
@@ -80,7 +80,7 @@ export function Topbar() {
           {/* Mobile: Link to notifications page */}
           <Link
             href="/notifications"
-            className="md:hidden relative p-2 hover:bg-muted rounded-full transition-colors text-foreground block focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2"
+            className="md:hidden relative flex items-center justify-center min-h-[44px] min-w-[44px] p-2 hover:bg-muted rounded-full transition-colors text-foreground focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2"
             aria-label={`View notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ""}`}
           >
             <Bell className="h-5 w-5" />
