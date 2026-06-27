@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { ChevronDown, AlertCircle, ArrowDownUp, Loader2 } from "lucide-react";
+import { ChevronDown, AlertCircle, ArrowDownUp, Loader2, ArrowRight } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { getBalances } from "@/lib/api/wallet";
 import { createSwap } from "@/lib/api/transactions";
@@ -23,20 +26,45 @@ const CURRENCIES: CurrencyOption[] = [
   { id: "ETH", name: "Ethereum", symbol: "ETH" },
 ];
 
+const convertSchema = z.object({
+  amount: z.string()
+    .min(1, "Amount is required")
+    .refine((val) => {
+      const num = parseFloat(val.replace(/,/g, ""));
+      return !isNaN(num) && num > 0;
+    }, "Enter a valid amount"),
+});
+
+type ConvertFormValues = z.infer<typeof convertSchema>;
+
 export function ConvertForm() {
   const [fromCurrency, setFromCurrency] = useState("USD");
   const [toCurrency, setToCurrency] = useState("NGN");
-  const [amount, setAmount] = useState("");
   const [showFromDropdown, setShowFromDropdown] = useState(false);
   const [showToDropdown, setShowToDropdown] = useState(false);
-  const [errors, setErrors] = useState<{ amount?: string }>({});
+  
+  const [step, setStep] = useState<"input" | "confirm">("input");
 
   const [balances, setBalances] = useState<Record<string, string>>({});
   const [exchangeRate, setExchangeRate] = useState<number>(0);
   const [isLoadingRate, setIsLoadingRate] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [rateError, setRateError] = useState<string | null>(null);
   const hadExchangeRateRef = useRef(false);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    setError,
+    clearErrors,
+    formState: { errors, isSubmitting },
+  } = useForm<ConvertFormValues>({
+    resolver: zodResolver(convertSchema),
+    defaultValues: { amount: "" },
+  });
+
+  const amount = watch("amount");
 
   const fromCurrencyData =
     CURRENCIES.find((c) => c.id === fromCurrency) || CURRENCIES[0];
@@ -54,59 +82,27 @@ export function ConvertForm() {
       })
       .catch((err) => {
         console.error("Failed to fetch balances", err);
-        setErrors({
-          amount: getRequestErrorMessage(err, {
-            fallback: "Unable to load balances. Please try again.",
-          }),
+        setError("root", {
+          message: getRequestErrorMessage(err, { fallback: "Unable to load balances" })
         });
       });
-  }, []);
+  }, [setError]);
 
-    useEffect(() => {
-        if (!fromCurrency || !toCurrency) return;
-        
-        let active = true;
-        
-        Promise.resolve().then(() => {
-            if (active) {
-                setIsLoadingRate(true);
-                setRateError(null);
-            }
-        });
-        
-        fetch(`/api/exchange-rates?from=${fromCurrency}&to=${toCurrency}`)
-            .then(res => {
-                if (!res.ok) throw new Error("Failed to fetch rate");
-                return res.json();
-            })
-            .then(data => {
-                if (!active) return;
-                if (data.rate) {
-                    setExchangeRate(Number(data.rate));
-                } else {
-                    setExchangeRate(0);
-                    setRateError("Rates unavailable");
-                }
-            })
-            .catch(err => {
-                if (!active) return;
-                console.error(err);
-                setExchangeRate(0);
-                setRateError("Rates unavailable");
-            })
-            .finally(() => {
-                if (active) {
-                    setIsLoadingRate(false);
-                }
-            });
-
-        return () => {
-            active = false;
-        };
-    }, [fromCurrency, toCurrency]);
-
+  useEffect(() => {
+    if (!fromCurrency || !toCurrency) return;
+    
+    let active = true;
+    
+    Promise.resolve().then(() => {
+        if (active) {
+            setIsLoadingRate(true);
+            setRateError(null);
+        }
+    });
+    
     getExchangeRate(fromCurrency, toCurrency)
       .then((data) => {
+        if (!active) return;
         if (data.rate) {
           hadExchangeRateRef.current = true;
           setExchangeRate(Number(data.rate));
@@ -116,6 +112,7 @@ export function ConvertForm() {
         }
       })
       .catch((err) => {
+        if (!active) return;
         console.error(err);
         setExchangeRate(0);
         setRateError(
@@ -126,8 +123,10 @@ export function ConvertForm() {
         );
       })
       .finally(() => {
-        setIsLoadingRate(false);
+        if (active) setIsLoadingRate(false);
       });
+      
+    return () => { active = false; };
   }, [fromCurrency, toCurrency]);
 
   const convertedAmount = useMemo(() => {
@@ -144,7 +143,7 @@ export function ConvertForm() {
   const handleSwap = () => {
     setFromCurrency(toCurrency);
     setToCurrency(fromCurrency);
-    setAmount("");
+    setValue("amount", "");
     setShowFromDropdown(false);
     setShowToDropdown(false);
   };
@@ -152,29 +151,27 @@ export function ConvertForm() {
   const fromBalanceStr = balances[fromCurrency] || "0.00";
   const handleMaxClick = () => {
     const balanceStr = fromBalanceStr.replace(/,/g, "");
-    setAmount(parseFloat(balanceStr).toString());
-    if (errors.amount) setErrors((prev) => ({ ...prev, amount: undefined }));
+    setValue("amount", parseFloat(balanceStr).toString(), { shouldValidate: true });
   };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9.]/g, "");
-    setAmount(value);
-    if (errors.amount) setErrors((prev) => ({ ...prev, amount: undefined }));
+    setValue("amount", value, { shouldValidate: true });
   };
 
-  const handleSubmit = async () => {
-    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-      setErrors({ amount: "Enter a valid amount" });
-      return;
-    }
+  const onPreview = (data: ConvertFormValues) => {
     const balanceNum = parseFloat(fromBalanceStr.replace(/,/g, ""));
-    if (parseFloat(amount) > balanceNum) {
-      setErrors({ amount: "Insufficient balance" });
+    const amountNum = parseFloat(data.amount);
+    if (amountNum > balanceNum) {
+      setError("amount", { message: "Insufficient balance" });
       return;
     }
+    clearErrors();
+    setStep("confirm");
+  };
 
-    setIsSubmitting(true);
-    setErrors({});
+  const onConfirm = async () => {
+    clearErrors();
     try {
       const res = await createSwap({
         fromCurrency,
@@ -182,10 +179,12 @@ export function ConvertForm() {
         amount,
       });
       if (res.status === "failed") {
-        setErrors({ amount: res.message || "Swap failed" });
+        setError("root", { message: res.message || "Swap failed" });
+        setStep("input");
       } else {
         // Success
-        setAmount("");
+        setValue("amount", "");
+        setStep("input");
         // Refresh balances
         const bals = await getBalances();
         const newBalances: Record<string, string> = {};
@@ -198,9 +197,8 @@ export function ConvertForm() {
       const errorMessage = getRequestErrorMessage(err, {
         fallback: "An error occurred during conversion",
       });
-      setErrors({ amount: errorMessage });
-    } finally {
-      setIsSubmitting(false);
+      setError("root", { message: errorMessage });
+      setStep("input");
     }
   };
 
@@ -213,9 +211,73 @@ export function ConvertForm() {
     isLoadingRate ||
     isSubmitting;
 
+  if (step === "confirm") {
+    return (
+      <div className="w-full max-w-md mx-auto px-4 py-6">
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground mb-1">Confirm Conversion</h1>
+            <p className="text-sm text-muted-foreground">Please review the details before confirming.</p>
+          </div>
+
+          <div className="bg-card rounded-2xl p-6 border border-border space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">You pay</span>
+              <span className="font-semibold text-foreground">{amount} {fromCurrency}</span>
+            </div>
+            
+            <div className="flex justify-center py-2">
+              <ArrowDownUp className="h-5 w-5 text-muted-foreground" />
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">You receive</span>
+              <span className="font-semibold text-foreground">{convertedAmount} {toCurrency}</span>
+            </div>
+            
+            <div className="border-t border-border pt-4 mt-4 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Exchange Rate</span>
+                <span className="text-sm font-medium text-foreground">
+                  1 {fromCurrency} = {exchangeRate} {toCurrency}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {errors.root && (
+            <div className="flex items-center gap-1.5 text-destructive bg-destructive/10 p-3 rounded-xl border border-destructive/20">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span className="text-sm">{errors.root.message}</span>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setStep("input")}
+              disabled={isSubmitting}
+              className="flex-1 py-3.5 rounded-xl font-semibold bg-muted text-foreground hover:bg-muted/80 transition-colors"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit(onConfirm)}
+              disabled={isSubmitting}
+              className="flex-1 py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60"
+            >
+              {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Confirm"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-md mx-auto px-4 py-6">
-      <div className="space-y-6">
+      <form onSubmit={handleSubmit(onPreview)} className="space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-1">
@@ -225,6 +287,13 @@ export function ConvertForm() {
             Convert between currencies at current market rates
           </p>
         </div>
+        
+        {errors.root && (
+            <div className="flex items-center gap-1.5 text-destructive bg-destructive/10 p-3 rounded-xl border border-destructive/20">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span className="text-sm">{errors.root.message}</span>
+            </div>
+        )}
 
         {/* From Section */}
         <div className="space-y-4 bg-card rounded-2xl p-6 border border-border">
@@ -278,7 +347,7 @@ export function ConvertForm() {
                       onClick={() => {
                         setFromCurrency(curr.id);
                         setShowFromDropdown(false);
-                        setAmount("");
+                        setValue("amount", "");
                       }}
                       className={cn(
                         "w-full flex items-center justify-between px-4 py-3 text-left",
@@ -344,7 +413,7 @@ export function ConvertForm() {
               {errors.amount && (
                 <div className="flex items-center gap-1.5 text-destructive">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  <span className="text-xs">{errors.amount}</span>
+                  <span className="text-xs">{errors.amount.message}</span>
                 </div>
               )}
             </div>
@@ -512,8 +581,7 @@ export function ConvertForm() {
         {/* Convert Button */}
         <div className="space-y-3">
           <button
-            type="button"
-            onClick={handleSubmit}
+            type="submit"
             disabled={isButtonDisabled}
             title={rateError ? "Rates unavailable" : undefined}
             className={cn(
@@ -525,20 +593,14 @@ export function ConvertForm() {
                 "opacity-60 cursor-not-allowed hover:bg-primary",
             )}
           >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Converting...
-              </>
-            ) : (
-              "Convert Now"
-            )}
+            Review Conversion
+            <ArrowRight className="h-5 w-5 ml-2" />
           </button>
           {rateError && (
             <p className="text-xs text-center text-destructive">{rateError}</p>
           )}
         </div>
-      </div>
+      </form>
     </div>
   );
 }

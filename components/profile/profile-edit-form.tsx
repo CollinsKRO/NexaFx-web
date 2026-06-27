@@ -3,47 +3,61 @@
 import { Loader2, Mail, Phone, Save, User as UserIcon } from 'lucide-react';
 import { getProfile, updateProfile } from '@/lib/api/users';
 import { useEffect, useState } from 'react';
-
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useAuthStore } from '@/hooks/use-auth-store';
 
+const profileSchema = z.object({
+  firstName: z.string().min(1, 'First Name is required'),
+  lastName: z.string().min(1, 'Last Name is required'),
+  email: z.string().email('Invalid email address'),
+  phone: z.string().optional(),
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
+
 export function ProfileEditForm() {
-  const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{
     type: 'success' | 'error';
     text: string;
   } | null>(null);
   
   const setAuth = useAuthStore((s) => s.setAuth);
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+    },
   });
 
   useEffect(() => {
     getProfile().then((profile) => {
-      setFormData({
+      reset({
         firstName: profile.firstName,
         lastName: profile.lastName,
         email: profile.email,
         phone: profile.phone || '',
       });
     });
-  }, []);
+  }, [reset]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const onSubmit = async (data: ProfileFormValues) => {
     setMessage(null);
     try {
-      if (!formData.firstName.trim() || !formData.lastName.trim()) {
-        throw new Error('First and Last name are required');
-      }
       const updated = await updateProfile({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        phone: formData.phone,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
       });
       setAuth(
         {
@@ -64,8 +78,6 @@ export function ProfileEditForm() {
         text:
           error instanceof Error ? error.message : 'Failed to update profile',
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -80,7 +92,7 @@ export function ProfileEditForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label
@@ -94,14 +106,14 @@ export function ProfileEditForm() {
               <input
                 id="firstName"
                 type="text"
-                value={formData.firstName}
-                onChange={(e) =>
-                  setFormData({ ...formData, firstName: e.target.value })
-                }
+                {...register("firstName")}
                 className="flex h-11 w-full rounded-lg border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-all"
                 placeholder="First Name"
               />
             </div>
+            {errors.firstName && (
+              <p className="text-xs text-destructive">{errors.firstName.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -116,14 +128,14 @@ export function ProfileEditForm() {
               <input
                 id="lastName"
                 type="text"
-                value={formData.lastName}
-                onChange={(e) =>
-                  setFormData({ ...formData, lastName: e.target.value })
-                }
+                {...register("lastName")}
                 className="flex h-11 w-full rounded-lg border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-all"
                 placeholder="Last Name"
               />
             </div>
+            {errors.lastName && (
+              <p className="text-xs text-destructive">{errors.lastName.message}</p>
+            )}
           </div>
         </div>
 
@@ -141,7 +153,7 @@ export function ProfileEditForm() {
                 id="email"
                 type="email"
                 readOnly
-                value={formData.email}
+                {...register("email")}
                 className="flex h-11 w-full rounded-lg border border-input bg-muted pl-10 pr-3 py-2 text-sm text-muted-foreground cursor-not-allowed"
               />
             </div>
@@ -159,14 +171,14 @@ export function ProfileEditForm() {
               <input
                 id="phone"
                 type="tel"
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
+                {...register("phone")}
                 className="flex h-11 w-full rounded-lg border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-all"
                 placeholder="+1 (555) 000-0000"
               />
             </div>
+            {errors.phone && (
+              <p className="text-xs text-destructive">{errors.phone.message}</p>
+            )}
           </div>
         </div>
 
@@ -188,10 +200,10 @@ export function ProfileEditForm() {
         <div className="flex justify-end pt-4">
           <button
             type="submit"
-            disabled={isLoading}
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-bold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-black hover:bg-primary/90 h-11 px-8 active:scale-[0.98] transition-transform"
+            disabled={isSubmitting}
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-bold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8 active:scale-[0.98] transition-transform"
           >
-            {isLoading ? (
+            {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Saving...

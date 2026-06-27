@@ -1,6 +1,6 @@
-import { Transaction } from "@/lib/api/admin";
+import { AdminTransaction } from "@/lib/api/admin";
 
-export const exportTransactionsToCsv = (transactions: Transaction[]): void => {
+export const exportTransactionsToCsv = (transactions: AdminTransaction[]): void => {
   if (!transactions.length) return;
 
   // Headers: ID, Type, Status, Amount, Currency, To Amount, To Currency, Date

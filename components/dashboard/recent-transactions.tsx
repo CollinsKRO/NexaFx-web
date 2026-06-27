@@ -192,9 +192,6 @@ export function RecentTransactions() {
                               "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
                               tx.status === "Success"
                                 ? "bg-green-500/10 text-green-500"
-                                : tx.type === "Withdraw"
-                                  ? "bg-red-500/10 text-red-500"
-                                  : "bg-orange-500/10 text-orange-500",
                                 : tx.status === "Pending"
                                 ? "bg-yellow-500/10 text-yellow-500"
                                 : "bg-red-500/10 text-red-500"
@@ -205,32 +202,6 @@ export function RecentTransactions() {
                         </td>
                         <td
                           className={cn(
-                            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-                            tx.status === "Success"
-                              ? "bg-green-500/10 text-green-500"
-                              : tx.status === "Pending"
-                                ? "bg-yellow-500/10 text-yellow-500"
-                                : "bg-red-500/10 text-red-500",
-                          )}
-                        >
-                          {tx.status}
-                        </span>
-                      </td>
-                      <td
-                        className={cn(
-                          "px-6 py-4 text-sm font-bold text-right",
-                          tx.type === "Deposit"
-                            ? "text-green-500"
-                            : "text-foreground",
-                        )}
-                      >
-                        {tx.amountString}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
                             "px-6 py-4 text-sm font-bold text-right",
                             tx.type === "Deposit"
                               ? "text-green-500"

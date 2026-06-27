@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
-import { Transaction } from "@/lib/api/admin";
+import { AdminTransaction } from "@/lib/api/admin";
 import { exportTransactionsToCsv } from "@/lib/utils/export";
 
 interface ExportButtonProps {
-  transactions: Transaction[];
+  transactions: AdminTransaction[];
 }
 
 export function ExportButton({ transactions }: ExportButtonProps) {

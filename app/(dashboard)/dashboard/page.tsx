@@ -8,50 +8,71 @@ import { useWithdrawalStore } from "@/hooks/useWithdrawalStore";
 import { Download, Upload } from "lucide-react";
 import { useState } from "react";
 
+import { WidgetCustomizer, useWidgetPreferences } from "@/components/dashboard/widget-customizer";
+
 export default function DashboardPage() {
   const [openDeposit, setOpenDeposit] = useState(false);
   const openWithdrawal = useWithdrawalStore((state) => state.open);
+  const { preferences, updatePreference, mounted } = useWidgetPreferences();
+  
   const toggleDeposit = () => {
     setOpenDeposit(!openDeposit);
   };
 
+  if (!mounted) return null;
+
   return (
-    <div className="flex flex-col gap-5 md:gap-10">
+    <div className="flex flex-col gap-5 md:gap-10 relative">
+      <div className="absolute right-0 top-[-40px] hidden md:block">
+        <WidgetCustomizer preferences={preferences} updatePreference={updatePreference} />
+      </div>
+      <div className="md:hidden flex justify-end">
+        <WidgetCustomizer preferences={preferences} updatePreference={updatePreference} />
+      </div>
+
       <WithdrawalModal />
       {openDeposit ? (
         <DepositMethods toggleDeposit={toggleDeposit} />
       ) : (
         <>
-          <AccountOverview
-            openDeposit={openDeposit}
-            onDepositClick={toggleDeposit}
-            onWithdrawClick={openWithdrawal}
-          />
+          {preferences.showAccountOverview && (
+            <AccountOverview
+              openDeposit={openDeposit}
+              onDepositClick={toggleDeposit}
+              onWithdrawClick={openWithdrawal}
+            />
+          )}
           <div className="md:px-4 space-y-4">
-            <div className="grid grid-cols-2 gap-4 px-6 pb-6 md:p-0">
-              <button
-                className="flex flex-col items-center justify-center bg-card rounded-xl md:rounded-sm py-6 md:py-10 gap-2 border-[0.43px] border-[#79797966] hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 active:scale-95"
-                onClick={toggleDeposit}
-                aria-label="Open deposit modal"
-              >
-                <Download />
-                <p className="text-sm md:text-base font-medium">Deposit</p>
-              </button>
-              <button
-                className="flex flex-col items-center justify-center bg-card rounded-xl md:rounded-sm py-6 md:py-10 gap-2 border-[0.43px] border-[#79797966] cursor-pointer hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 active:scale-95"
-                onClick={openWithdrawal}
-                aria-label="Open withdrawal modal"
-              >
-                <Upload />
-                <p className="text-sm md:text-base font-medium">Withdraw</p>
-              </button>
-            </div>
+            {preferences.showQuickActions && (
+              <div className="grid grid-cols-2 gap-4 px-6 pb-6 md:p-0">
+                <button
+                  className="flex flex-col items-center justify-center bg-card rounded-xl md:rounded-sm py-6 md:py-10 gap-2 border-[0.43px] border-[#79797966] hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 active:scale-95"
+                  onClick={toggleDeposit}
+                  aria-label="Open deposit modal"
+                >
+                  <Download />
+                  <p className="text-sm md:text-base font-medium">Deposit</p>
+                </button>
+                <button
+                  className="flex flex-col items-center justify-center bg-card rounded-xl md:rounded-sm py-6 md:py-10 gap-2 border-[0.43px] border-[#79797966] cursor-pointer hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 active:scale-95"
+                  onClick={openWithdrawal}
+                  aria-label="Open withdrawal modal"
+                >
+                  <Upload />
+                  <p className="text-sm md:text-base font-medium">Withdraw</p>
+                </button>
+              </div>
+            )}
 
-            <div className="space-y-4 px-3 md:px-0">
-              <MarketOverview />
-            </div>
+            {preferences.showMarketOverview && (
+              <div className="space-y-4 px-3 md:px-0">
+                <MarketOverview />
+              </div>
+            )}
 
-            <RecentTransactions />
+            {preferences.showRecentTransactions && (
+              <RecentTransactions />
+            )}
           </div>
         </>
       )}

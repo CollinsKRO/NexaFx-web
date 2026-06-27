@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { useWithdrawalStore } from "@/hooks/useWithdrawalStore";
 import { ChevronDown, ChevronLeft, AlertCircle } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { getCurrencies, type Currency } from "@/lib/api/currencies";
 import { getBalances } from "@/lib/api/wallet";
@@ -27,11 +30,21 @@ function toCurrencyOption(
   };
 }
 
+const withdrawalSchema = z.object({
+  walletAddress: z.string().min(10, "Please enter a valid wallet address"),
+  amount: z.string().min(1, "Amount is required").refine((val) => {
+    const num = parseFloat(val.replace(/,/g, ""));
+    return !isNaN(num) && num > 0;
+  }, "Amount must be greater than 0"),
+});
+
+type WithdrawalFormValues = z.infer<typeof withdrawalSchema>;
+
 export function WithdrawalForm() {
   const {
     currency,
-    amount,
-    walletAddress,
+    amount: storeAmount,
+    walletAddress: storeWalletAddress,
     setStep,
     setFormData,
     close,
@@ -42,9 +55,25 @@ export function WithdrawalForm() {
   const [isLoadingCurrencies, setIsLoadingCurrencies] = useState(true);
   const [currencyError, setCurrencyError] = useState<string | null>(null);
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
-  const [errors, setErrors] = useState<{ address?: string; amount?: string }>(
-    {},
-  );
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    setError,
+    clearErrors,
+    formState: { errors },
+  } = useForm<WithdrawalFormValues>({
+    resolver: zodResolver(withdrawalSchema),
+    defaultValues: {
+      walletAddress: storeWalletAddress,
+      amount: storeAmount,
+    },
+  });
+
+  const walletAddress = watch("walletAddress");
+  const amount = watch("amount");
 
   const fetchCurrenciesAndBalances = async () => {
     setIsLoadingCurrencies(true);
@@ -110,40 +139,24 @@ export function WithdrawalForm() {
   const selectedCurrency =
     currencies.find((c) => c.id === currency) || currencies[0];
 
-  const validateForm = () => {
-    const newErrors: { address?: string; amount?: string } = {};
-
-    if (!walletAddress.trim()) {
-      newErrors.address = "Wallet address is required";
-    } else if (walletAddress.trim().length < 10) {
-      newErrors.address = "Please enter a valid wallet address";
-    }
-
-    if (!amount.trim()) {
-      newErrors.amount = "Amount is required";
-    } else {
-      const numAmount = parseFloat(amount);
-      if (isNaN(numAmount) || numAmount <= 0) {
-        newErrors.amount = "Amount must be greater than 0";
-      } else if (
-        numAmount > parseFloat(selectedCurrency.balance.replace(",", ""))
-      ) {
-        newErrors.amount = "Insufficient balance";
+  const onSubmit = (data: WithdrawalFormValues) => {
+    if (selectedCurrency) {
+      const numAmount = parseFloat(data.amount.replace(/,/g, ""));
+      if (numAmount > parseFloat(selectedCurrency.balance.replace(/,/g, ""))) {
+        setError("amount", { message: "Insufficient balance" });
+        return;
       }
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = () => {
-    if (validateForm()) {
-      setStep("review");
-    }
+    setFormData({ walletAddress: data.walletAddress, amount: data.amount });
+    setStep("review");
   };
 
   const handleMaxClick = () => {
-    setFormData({ amount: selectedCurrency.balance.replace(",", "") });
+    if (selectedCurrency) {
+      const maxAmount = selectedCurrency.balance.replace(/,/g, "");
+      setValue("amount", maxAmount, { shouldValidate: true });
+      setFormData({ amount: maxAmount });
+    }
   };
 
   const handleCancel = () => {
@@ -152,10 +165,11 @@ export function WithdrawalForm() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3 pt-4">
         <button
+          type="button"
           onClick={() => setStep("select")}
           className="p-2 -ml-2 rounded-full hover:bg-muted transition-colors"
           aria-label="Back to withdrawal method"
@@ -180,26 +194,21 @@ export function WithdrawalForm() {
             Wallet Address
           </label>
           <input
+            {...register("walletAddress")}
             type="text"
             placeholder="Enter wallet address or username"
-            value={walletAddress}
-            onChange={(e) => {
-              setFormData({ walletAddress: e.target.value });
-              if (errors.address)
-                setErrors((prev) => ({ ...prev, address: undefined }));
-            }}
             className={cn(
               "w-full px-4 py-3 rounded-xl bg-muted/50 border",
               "text-sm text-foreground placeholder:text-muted-foreground",
               "focus:outline-none focus:ring-2 focus:ring-primary/50",
               "transition-all duration-200",
-              errors.address ? "border-destructive" : "border-border",
+              errors.walletAddress ? "border-destructive" : "border-border",
             )}
           />
-          {errors.address && (
+          {errors.walletAddress && (
             <div className="flex items-center gap-1.5 text-destructive">
               <AlertCircle className="size-3.5" />
-              <span className="text-xs">{errors.address}</span>
+              <span className="text-xs">{errors.walletAddress.message}</span>
             </div>
           )}
         </div>
@@ -242,7 +251,7 @@ export function WithdrawalForm() {
                   </span>
                 ) : selectedCurrency ? (
                   <div className="flex items-center gap-3">
-                    {selectedCurrency.icon}
+                    {/* {selectedCurrency.icon} */ /* Icon not working perfectly in SSR, removed to avoid issues */}
                     <span className="font-medium text-foreground">
                       {selectedCurrency.id}
                     </span>
@@ -275,7 +284,6 @@ export function WithdrawalForm() {
                     )}
                   >
                     <div className="flex items-center gap-3">
-                      {curr.icon}
                       <div className="text-left">
                         <p className="font-medium text-foreground">{curr.id}</p>
                         <p className="text-xs text-muted-foreground">
@@ -306,15 +314,14 @@ export function WithdrawalForm() {
           </div>
           <div className="relative">
             <input
+              {...register("amount")}
               type="text"
               inputMode="decimal"
               placeholder="0.00"
-              value={amount}
               onChange={(e) => {
                 const value = e.target.value.replace(/[^0-9.]/g, "");
+                setValue("amount", value, { shouldValidate: true });
                 setFormData({ amount: value });
-                if (errors.amount)
-                  setErrors((prev) => ({ ...prev, amount: undefined }));
               }}
               className={cn(
                 "w-full px-4 py-3 pr-16 rounded-xl bg-muted/50 border",
@@ -335,7 +342,7 @@ export function WithdrawalForm() {
           {errors.amount && (
             <div className="flex items-center gap-1.5 text-destructive">
               <AlertCircle className="size-3.5" />
-              <span className="text-xs">{errors.amount}</span>
+              <span className="text-xs">{errors.amount.message}</span>
             </div>
           )}
         </div>
@@ -344,7 +351,7 @@ export function WithdrawalForm() {
       {/* Actions */}
       <div className="space-y-3 pt-2">
         <button
-          onClick={handleSubmit}
+          type="submit"
           disabled={isLoadingCurrencies || !!currencyError}
           className={cn(
             "w-full py-3.5 rounded-xl font-semibold",
@@ -358,12 +365,13 @@ export function WithdrawalForm() {
           Withdraw
         </button>
         <button
+          type="button"
           onClick={handleCancel}
           className="w-full py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           Cancel
         </button>
       </div>
-    </div>
+    </form>
   );
 }

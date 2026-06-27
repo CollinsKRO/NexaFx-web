@@ -76,18 +76,40 @@ export const viewport: Viewport = {
   themeColor: "#F39A00",
 };
 
-export default function RootLayout({
+import { ThemeProvider } from "@/components/theme-provider";
+import { OfflineBanner } from "@/components/shared/offline-banner";
+import { SessionTimeoutWarning } from "@/components/shared/session-timeout-warning";
+import { GlobalSearch } from "@/components/shared/global-search";
+
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages } from 'next-intl/server';
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const messages = await getMessages();
+
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${inter.variable} ${manrope.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <PwaInstallPrompt />
+        <NextIntlClientProvider messages={messages}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <GlobalSearch />
+            <PwaInstallPrompt />
+            <OfflineBanner />
+            <SessionTimeoutWarning />
+          </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

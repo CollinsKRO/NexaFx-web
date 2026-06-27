@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps, @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Search, Filter, Loader2 } from 'lucide-react';
 import { AdminUser, getAdminUsers } from '@/lib/api/admin';
 import { AdminUserTable } from '@/components/admin/AdminUserTable';
@@ -32,7 +32,7 @@ export default function UsersPage() {
     };
   }, [searchQuery]);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
       const res = await getAdminUsers({
@@ -49,14 +49,14 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, debouncedSearch]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchUsers();
+      loadUsers();
     }, 0);
     return () => clearTimeout(timer);
-  }, [fetchUsers]);
+  }, [loadUsers]);
 
   // Filter users based on search query
   const filteredUsers = useMemo(() => {
