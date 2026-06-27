@@ -8,6 +8,7 @@ import {
   Check,
   CircleDollarSign,
 } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useEffect, useState } from "react";
 import { getBalances } from "@/lib/api/wallet";
 import { getProfile } from "@/lib/api/users";
@@ -134,9 +135,11 @@ export function AccountOverview({
                 <div className="hidden md:block h-9 w-36 bg-muted rounded animate-pulse" />
               ) : !error ? (
                 <div className="hidden md:inline-flex md:items-center gap-2 bg-muted rounded-sm border border-border px-4 py-2">
-                  <p className="text-xs font-medium text-foreground">
-                    {truncateAddress(walletAddress)}
-                  </p>
+                  <Tooltip content={`Stellar wallet: ${walletAddress}`}>
+                    <p className="text-xs font-medium text-foreground">
+                      {truncateAddress(walletAddress)}
+                    </p>
+                  </Tooltip>
                   <button
                     onClick={handleCopyAddress}
                     aria-label="Copy wallet address"

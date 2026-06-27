@@ -56,10 +56,10 @@ export default function UsersPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchUsers();
+      loadUsers();
     }, 0);
     return () => clearTimeout(timer);
-  }, [fetchUsers]);
+  }, [loadUsers]);
 
   // Filter users based on search query
   const filteredUsers = useMemo(() => {

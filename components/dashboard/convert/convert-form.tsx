@@ -484,7 +484,8 @@ export function ConvertForm() {
                 Exchange Rate
               </span>
               <span className="text-sm font-semibold text-foreground">
-                1 {fromCurrency} ={" "}
+                 1 {fromCurrency} ={" "}
+                 <InfoIcon tooltip="Exchange rate includes a 0.5% conversion fee" />
                 {exchangeRate.toLocaleString(undefined, {
                   minimumFractionDigits:
                     fromCurrency === "ETH" || toCurrency === "ETH" ? 2 : 2,

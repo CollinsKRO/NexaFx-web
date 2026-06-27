@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, X, ArrowDownLeft, ArrowUpRight, RefreshCw } from "lucide-react";
+import { Copy, X, ArrowDownLeft, ArrowUpRight, RefreshCw, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Transaction, getTransactionById } from "@/lib/api/transactions";
+import { Transaction, getTransactionById, resendTransactionConfirmation } from "@/lib/api/transactions";
 
 interface TransactionDetailsProps {
     transaction: Transaction | null;
@@ -168,6 +168,9 @@ export function TransactionDetails({ transaction, open, onClose }: TransactionDe
 
                             {/* Actions */}
                             <div className="flex flex-row items-center gap-4 pt-4">
+                                {tx.status === "Success" && (
+                                    <ResendButton transactionId={tx.id} />
+                                )}
                                 <button className="flex-1 bg-[#FFD552] text-primary-foreground font-semibold py-2 px-3 text-sm rounded-[18px] hover:opacity-90 transition-opacity whitespace-nowrap">
                                     Share Transaction
                                 </button>
@@ -183,6 +186,51 @@ export function TransactionDetails({ transaction, open, onClose }: TransactionDe
                 </div>
             </div>
         </div>
+    );
+}
+
+function ResendButton({ transactionId }: { transactionId: string }) {
+    const [isResending, setIsResending] = useState(false);
+    const [cooldown, setCooldown] = useState(0);
+    const [resendSuccess, setResendSuccess] = useState(false);
+
+    useEffect(() => {
+        if (cooldown > 0) {
+            const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [cooldown]);
+
+    const handleResend = async () => {
+        if (cooldown > 0 || isResending) return;
+        try {
+            setIsResending(true);
+            await resendTransactionConfirmation(transactionId);
+            setResendSuccess(true);
+            setCooldown(60);
+            setTimeout(() => setResendSuccess(false), 3000);
+        } catch {
+            // silently fail
+        } finally {
+            setIsResending(false);
+        }
+    };
+
+    return (
+        <button
+            onClick={handleResend}
+            disabled={cooldown > 0 || isResending}
+            className="flex-1 bg-transparent border border-[#000000] text-foreground font-semibold py-2 px-3 text-sm rounded-[18px] hover:bg-muted transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+            <Send className="w-4 h-4" />
+            {isResending
+                ? "Sending..."
+                : resendSuccess
+                  ? "Sent!"
+                  : cooldown > 0
+                    ? `Resend in ${cooldown}s`
+                    : "Resend confirmation email"}
+        </button>
     );
 }
 
