@@ -1,154 +1,81 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Switch } from '@/components/ui/switch';
-import { Loader2 } from 'lucide-react';
-
-interface NotificationSubToggle {
-  key: string;
-  label: string;
-}
-
-interface NotificationSection {
-  key: string;
-  title: string;
-  description: string;
-  subToggles: NotificationSubToggle[];
-}
-
-const SECTIONS: NotificationSection[] = [
-  {
-    key: 'email',
-    title: 'Email Notifications',
-    description: 'Receive notifications via email',
-    subToggles: [
-      { key: 'email_transaction', label: 'Transaction confirmations' },
-      { key: 'email_deposit', label: 'Deposit received' },
-      { key: 'email_withdrawal', label: 'Withdrawal processed' },
-      { key: 'email_kyc', label: 'KYC status updates' },
-      { key: 'email_security', label: 'Account security alerts' },
-      { key: 'email_promotional', label: 'Promotional offers' },
-    ],
-  },
-  {
-    key: 'push',
-    title: 'Push Notifications',
-    description: 'Receive push notifications on your device',
-    subToggles: [
-      { key: 'push_transaction', label: 'Transaction confirmations' },
-      { key: 'push_deposit', label: 'Deposit received' },
-      { key: 'push_withdrawal', label: 'Withdrawal processed' },
-      { key: 'push_kyc', label: 'KYC status updates' },
-      { key: 'push_security', label: 'Account security alerts' },
-      { key: 'push_promotional', label: 'Promotional offers' },
-    ],
-  },
-  {
-    key: 'in_app',
-    title: 'In-App Notifications',
-    description: 'Receive notifications within the app',
-    subToggles: [
-      { key: 'in_app_transaction', label: 'Transaction confirmations' },
-      { key: 'in_app_deposit', label: 'Deposit received' },
-      { key: 'in_app_withdrawal', label: 'Withdrawal processed' },
-      { key: 'in_app_kyc', label: 'KYC status updates' },
-      { key: 'in_app_security', label: 'Account security alerts' },
-      { key: 'in_app_promotional', label: 'Promotional offers' },
-    ],
-  },
-];
+import { useState, useEffect } from "react";
+import { sendWeeklyStatement } from "@/lib/api/users";
+import { Loader2, Send } from "lucide-react";
 
 export function NotificationPreferences() {
-  const [settings, setSettings] = useState<Record<string, boolean>>(() => {
-    const initial: Record<string, boolean> = {};
-    for (const section of SECTIONS) {
-      initial[section.key] = true;
-      for (const sub of section.subToggles) {
-        initial[sub.key] = true;
-      }
+  const [sending, setSending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+      return () => clearTimeout(timer);
     }
-    return initial;
-  });
-  const [isSaving, setIsSaving] = useState(false);
+  }, [cooldown]);
 
-  const toggleSetting = (key: string) => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+  const handleSendStatement = async () => {
+    if (cooldown > 0 || sending) return;
+    try {
+      setSending(true);
+      await sendWeeklyStatement();
+      setSuccess(true);
+      setCooldown(86400);
+      setTimeout(() => setSuccess(false), 5000);
+    } catch {
+      // silently fail
+    } finally {
+      setSending(false);
+    }
   };
 
-  const toggleSection = (section: NotificationSection) => {
-    const newValue = !settings[section.key];
-    setSettings((prev) => {
-      const next = { ...prev, [section.key]: newValue };
-      for (const sub of section.subToggles) {
-        next[sub.key] = newValue;
-      }
-      return next;
-    });
-  };
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSaving(false);
+  const formatCooldown = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
   };
 
   return (
-    <div className="space-y-6">
-      {SECTIONS.map((section) => (
-        <div
-          key={section.key}
-          className="rounded-2xl border-[#8C8C8C] border-[0.25px] bg-card"
-        >
-          <div className="flex items-center justify-between mx-5 pt-6.25 pb-4.5 border-b border-[#00000026]">
-            <div>
-              <h3 className="text-muted-foreground font-semibold text-base">
-                {section.title}
-              </h3>
-              <p className="text-[12px] text-muted-foreground font-normal mt-0.5">
-                {section.description}
-              </p>
-            </div>
-            <Switch
-              checked={settings[section.key]}
-              onCheckedChange={() => toggleSection(section)}
-              className="gradient-blue-yellow border-none"
-              size="lg"
-            />
+    <div className="rounded-2xl border border-border bg-card">
+      <h3 className="text-muted-foreground font-semibold text-base mx-5 pt-6 pb-4 border-b border-border">
+        Weekly Statement
+      </h3>
+      <div className="p-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-foreground font-medium">
+              Send me a statement now
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Receive a summary of your weekly transactions via email. You can
+              request this once every 24 hours.
+            </p>
           </div>
-
-          <div className="space-y-4 py-5">
-            {section.subToggles.map((sub) => (
-              <div
-                key={sub.key}
-                className="flex items-center justify-between px-5"
-              >
-                <span className="text-foreground text-sm font-medium">
-                  {sub.label}
-                </span>
-                <Switch
-                  checked={settings[sub.key]}
-                  onCheckedChange={() => toggleSetting(sub.key)}
-                  className="gradient-blue-yellow border-none"
-                  size="sm"
-                />
-              </div>
-            ))}
-          </div>
+          <button
+            onClick={handleSendStatement}
+            disabled={cooldown > 0 || sending}
+            className="flex items-center gap-2 px-5 py-2.5 bg-yellow-400 text-black rounded-lg text-sm font-semibold hover:bg-yellow-500 transition-colors disabled:opacity-50 whitespace-nowrap"
+          >
+            {sending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Sending...
+              </>
+            ) : success ? (
+              "Statement sent!"
+            ) : cooldown > 0 ? (
+              `Available in ${formatCooldown(cooldown)}`
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Send Statement
+              </>
+            )}
+          </button>
         </div>
-      ))}
-
-      <div className="flex gap-3 md:flex-row flex-col md:max-w-105.25 mt-10 mb-3.5 ml-auto">
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="flex-1 cursor-pointer py-4 bg-[#F0BB16] hover:bg-yellow-500 rounded-sm text-black font-medium transition-colors md:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {isSaving && <Loader2 className="size-4 animate-spin" />}
-          {isSaving ? 'Saving...' : 'Save Changes'}
-        </button>
-        <button className="flex-1 cursor-pointer py-4 border border-border hover:bg-muted text-foreground font-semibold rounded-sm transition-colors">
-          Cancel
-        </button>
       </div>
     </div>
   );

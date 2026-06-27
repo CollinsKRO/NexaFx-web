@@ -17,6 +17,9 @@ export interface UpdateProfileDto {
   phone?: string;
 }
 
+export const sendWeeklyStatement = (): Promise<void> =>
+  apiClient('/users/send-weekly-statement', { method: 'POST', useProxy: false });
+
 export async function deleteProfile (): Promise<void> {
   return apiClient("/users/profile", {
     method: "DELETE",
