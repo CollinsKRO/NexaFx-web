@@ -171,6 +171,33 @@ export default function SignInPageClient() {
             </button>
           </form>
 
+          {typeof window !== 'undefined' && window.PublicKeyCredential && (
+            <div className="mt-4">
+              <div className="relative flex items-center gap-2 mb-4">
+                <div className="flex-1 border-t border-border" />
+                <span className="text-xs text-muted-foreground">or</span>
+                <div className="flex-1 border-t border-border" />
+              </div>
+              <button
+                type="button"
+                disabled={isLoading}
+                onClick={async () => {
+                  try {
+                    const result = await authenticateWithPasskey();
+                    useAuthStore.getState().setAuth(result as any, result.accessToken, result.refreshToken);
+                    window.location.href = '/dashboard';
+                  } catch {
+                    setError('Passkey authentication failed');
+                  }
+                }}
+                className="w-full py-2.5 border border-border text-foreground font-medium rounded-md hover:bg-muted transition-colors disabled:opacity-50 text-sm flex items-center justify-center gap-2"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                Sign in with passkey
+              </button>
+            </div>
+          )}
+
           <div className="mt-4 text-center text-xs text-muted-foreground">
             Don&apos;t have an account?{' '}
             <Link
@@ -339,6 +366,33 @@ export default function SignInPageClient() {
               {isLoading ? 'Logging in...' : 'Log in'}
             </button>
           </form>
+
+          {typeof window !== 'undefined' && window.PublicKeyCredential && (
+            <div className="mt-4">
+              <div className="relative flex items-center gap-2 mb-4">
+                <div className="flex-1 border-t border-border" />
+                <span className="text-xs text-muted-foreground">or</span>
+                <div className="flex-1 border-t border-border" />
+              </div>
+              <button
+                type="button"
+                disabled={isLoading}
+                onClick={async () => {
+                  try {
+                    const result = await authenticateWithPasskey();
+                    useAuthStore.getState().setAuth(result as any, result.accessToken, result.refreshToken);
+                    window.location.href = '/dashboard';
+                  } catch {
+                    setError('Passkey authentication failed');
+                  }
+                }}
+                className="w-full py-2.5 border border-border text-foreground font-medium rounded-md hover:bg-muted transition-colors disabled:opacity-50 text-sm flex items-center justify-center gap-2"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                Sign in with passkey
+              </button>
+            </div>
+          )}
 
           <div className="mt-4 text-center text-xs text-muted-foreground">
             Don&apos;t have an account?{' '}

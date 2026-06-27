@@ -81,6 +81,7 @@ export default function VerifyOtpPage() {
       const fullName = [res.user.firstName, res.user.lastName].filter(Boolean).join(' ');
       setAuth({ ...res.user, name: fullName }, res.accessToken, res.refreshToken);
       setIsLoading(false);
+      haptics.success();
       router.push('/dashboard');
     } catch (err: unknown) {
       setIsLoading(false);
