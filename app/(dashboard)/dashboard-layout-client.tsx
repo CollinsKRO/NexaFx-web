@@ -9,6 +9,8 @@ import { cn } from "../../lib/utils";
 import { useAuthStore } from "../../hooks/use-auth-store";
 import { useRouter } from "next/navigation";
 import { useSidebarStore } from "../../hooks/use-sidebar-store";
+import { useRealtimeBalance } from "@/hooks/use-realtime-balance";
+import { RealtimeIndicator } from "@/components/dashboard/realtime-indicator";
 
 export default function DashboardLayoutClient({
   children,
@@ -19,6 +21,7 @@ export default function DashboardLayoutClient({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { isAuthenticated, accessToken } = useAuthStore();
   const router = useRouter();
+  useRealtimeBalance();
 
   useEffect(() => {
     if (!isAuthenticated || !accessToken) {
@@ -65,8 +68,11 @@ export default function DashboardLayoutClient({
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <NetworkStatusBanner />
-        <div className="p-4 md:px-8">
-          <Topbar />
+        <div className="p-4 md:px-8 flex items-center gap-3">
+          <div className="flex-1">
+            <Topbar />
+          </div>
+          <RealtimeIndicator />
         </div>
         <main className="flex-1 overflow-y-auto px-4 md:px-8 pb-4">
           {children}
