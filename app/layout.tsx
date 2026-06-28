@@ -1,7 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter, Manrope } from "next/font/google";
 import "./globals.css";
+import { NextIntlClientProvider, useLocale } from "next-intl";
+import { notFound } from "next/navigation";
+import { Toaster } from "sonner";
 import { PwaInstallPrompt } from "@/components/shared/pwa-install-prompt";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,12 +54,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${inter.variable} ${manrope.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-        <PwaInstallPrompt />
-      </body>
-    </html>
+    <body
+      className={`${inter.variable} ${manrope.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
+    >
+      {children}
+    </body>
+  </html>
   );
 }

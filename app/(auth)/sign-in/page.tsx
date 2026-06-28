@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -49,7 +49,7 @@ export default function SignInPage() {
             priority
           />
           <div className="text-sm text-gray-700">
-            Don&apos;t have an account?{' '}
+            Don't have an account?{' '}
             <Link
               href="/sign-up"
               className="text-[#FFA200] hover:underline font-medium"
@@ -170,7 +170,7 @@ export default function SignInPage() {
           </form>
 
           <div className="mt-4 text-center text-xs text-muted-foreground">
-            Don&apos;t have an account?{' '}
+            Don't have an account?{' '}
             <Link
               href="/sign-up"
               className="text-[#FFA200] hover:underline font-medium"
@@ -301,7 +301,7 @@ export default function SignInPage() {
           </form>
 
           <div className="mt-4 text-center text-xs text-muted-foreground">
-            Don&apos;t have an account?{' '}
+            Don't have an account?{' '}
             <Link
               href="/sign-up"
               className="text-[#FFA200] hover:underline font-medium"
