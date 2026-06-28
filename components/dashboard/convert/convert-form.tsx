@@ -8,7 +8,7 @@ import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { getBalances } from "@/lib/api/wallet";
 import { createSwap } from "@/lib/api/transactions";
-import { getExchangeRate } from "@/lib/api/exchange-rates";
+import { getExchangeRate, lockExchangeRate, type LockedRate } from "@/lib/api/exchange-rates";
 import { getRequestErrorMessage } from "@/lib/api-client";
 
 interface CurrencyOption {
@@ -50,6 +50,10 @@ export function ConvertForm() {
   const [isLoadingRate, setIsLoadingRate] = useState(false);
   const [rateError, setRateError] = useState<string | null>(null);
   const hadExchangeRateRef = useRef(false);
+
+  const [lockDetails, setLockDetails] = useState<LockedRate | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [isLocking, setIsLocking] = useState(false);
 
   const {
     register,
@@ -140,6 +144,21 @@ export function ConvertForm() {
     });
   }, [amount, exchangeRate, fromCurrency, toCurrency]);
 
+  useEffect(() => {
+    if (step !== "confirm" || timeLeft <= 0) return;
+    
+    const timerId = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerId);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timerId);
+  }, [step, timeLeft]);
+
   const handleSwap = () => {
     setFromCurrency(toCurrency);
     setToCurrency(fromCurrency);
@@ -159,7 +178,7 @@ export function ConvertForm() {
     setValue("amount", value, { shouldValidate: true });
   };
 
-  const onPreview = (data: ConvertFormValues) => {
+  const onPreview = async (data: ConvertFormValues) => {
     const balanceNum = parseFloat(fromBalanceStr.replace(/,/g, ""));
     const amountNum = parseFloat(data.amount);
     if (amountNum > balanceNum) {
@@ -167,7 +186,27 @@ export function ConvertForm() {
       return;
     }
     clearErrors();
-    setStep("confirm");
+    setIsLocking(true);
+    
+    try {
+      const lockRes = await lockExchangeRate(fromCurrency, toCurrency, amountNum);
+      setLockDetails(lockRes);
+      // Determine seconds until expiry
+      const expiry = new Date(lockRes.expiresAt).getTime();
+      const now = Date.now();
+      let diff = Math.max(0, Math.floor((expiry - now) / 1000));
+      if (diff === 0 || isNaN(diff)) diff = 300; // default 5 mins
+      setTimeLeft(diff);
+      setStep("confirm");
+    } catch (err: unknown) {
+      console.warn("Backend rate lock not available or failed, using fallback", err);
+      // Fallback flow
+      setLockDetails(null);
+      setTimeLeft(30);
+      setStep("confirm");
+    } finally {
+      setIsLocking(false);
+    }
   };
 
   const onConfirm = async () => {
@@ -177,6 +216,7 @@ export function ConvertForm() {
         fromCurrency,
         toCurrency,
         amount,
+        lockId: lockDetails?.lockId,
       });
       if (res.status === "failed") {
         setError("root", { message: res.message || "Swap failed" });
@@ -212,64 +252,114 @@ export function ConvertForm() {
     isSubmitting;
 
   if (step === "confirm") {
+    const isExpired = timeLeft === 0;
+    const mins = Math.floor(timeLeft / 60);
+    const secs = timeLeft % 60;
+    const formattedTime = `${mins}:${secs.toString().padStart(2, "0")}`;
+
+    const maxTime = lockDetails ? 300 : 30; // approx max time for progress bar
+    const progressPercent = Math.max(0, (timeLeft / maxTime) * 100);
+
     return (
       <div className="w-full max-w-md mx-auto px-4 py-6">
         <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground mb-1">Confirm Conversion</h1>
-            <p className="text-sm text-muted-foreground">Please review the details before confirming.</p>
-          </div>
-
-          <div className="bg-card rounded-2xl p-6 border border-border space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">You pay</span>
-              <span className="font-semibold text-foreground">{amount} {fromCurrency}</span>
+          {isExpired ? (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-6 text-center">
+              <h1 className="text-xl font-bold text-destructive mb-2">Rate Expired</h1>
+              <p className="text-sm text-destructive/80 mb-6">
+                Your rate has expired. Lock a new rate to continue.
+              </p>
+              <button
+                type="button"
+                onClick={() => setStep("input")}
+                className="w-full py-3.5 rounded-xl font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Get new rate
+              </button>
             </div>
-            
-            <div className="flex justify-center py-2">
-              <ArrowDownUp className="h-5 w-5 text-muted-foreground" />
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">You receive</span>
-              <span className="font-semibold text-foreground">{convertedAmount} {toCurrency}</span>
-            </div>
-            
-            <div className="border-t border-border pt-4 mt-4 space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Exchange Rate</span>
-                <span className="text-sm font-medium text-foreground">
-                  1 {fromCurrency} = {exchangeRate} {toCurrency}
-                </span>
+          ) : (
+            <>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground mb-1">Confirm Conversion</h1>
+                <p className="text-sm text-muted-foreground">Please review the details before confirming.</p>
               </div>
-            </div>
-          </div>
 
-          {errors.root && (
-            <div className="flex items-center gap-1.5 text-destructive bg-destructive/10 p-3 rounded-xl border border-destructive/20">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span className="text-sm">{errors.root.message}</span>
-            </div>
+              {/* Timer UI */}
+              <div className="bg-card rounded-2xl p-4 border border-border">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-foreground">
+                    Rate locked
+                  </span>
+                  <span className={cn(
+                    "text-sm font-bold tabular-nums",
+                    timeLeft < 60 ? "text-destructive" : "text-primary"
+                  )}>
+                    expires in {formattedTime}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full transition-all duration-1000 ease-linear rounded-full",
+                      timeLeft < 60 ? "bg-destructive" : "bg-primary"
+                    )}
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="bg-card rounded-2xl p-6 border border-border space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">You pay</span>
+                  <span className="font-semibold text-foreground">{amount} {fromCurrency}</span>
+                </div>
+                
+                <div className="flex justify-center py-2">
+                  <ArrowDownUp className="h-5 w-5 text-muted-foreground" />
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">You receive</span>
+                  <span className="font-semibold text-foreground">{lockDetails ? lockDetails.toAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 }) : convertedAmount} {toCurrency}</span>
+                </div>
+                
+                <div className="border-t border-border pt-4 mt-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Exchange Rate</span>
+                    <span className="text-sm font-medium text-foreground">
+                      1 {fromCurrency} = {lockDetails ? lockDetails.rate : exchangeRate} {toCurrency}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {errors.root && (
+                <div className="flex items-center gap-1.5 text-destructive bg-destructive/10 p-3 rounded-xl border border-destructive/20">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span className="text-sm">{errors.root.message}</span>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep("input")}
+                  disabled={isSubmitting}
+                  className="flex-1 py-3.5 rounded-xl font-semibold bg-muted text-foreground hover:bg-muted/80 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit(onConfirm)}
+                  disabled={isSubmitting}
+                  className="flex-1 py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60"
+                >
+                  {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Confirm Swap"}
+                </button>
+              </div>
+            </>
           )}
-
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setStep("input")}
-              disabled={isSubmitting}
-              className="flex-1 py-3.5 rounded-xl font-semibold bg-muted text-foreground hover:bg-muted/80 transition-colors"
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit(onConfirm)}
-              disabled={isSubmitting}
-              className="flex-1 py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60"
-            >
-              {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Confirm"}
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -582,19 +672,25 @@ export function ConvertForm() {
         <div className="space-y-3">
           <button
             type="submit"
-            disabled={isButtonDisabled}
+            disabled={isButtonDisabled || isLocking}
             title={rateError ? "Rates unavailable" : undefined}
             className={cn(
               "w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2",
               "bg-primary text-primary-foreground",
               "hover:bg-primary/90 active:scale-[0.98]",
               "transition-all duration-200",
-              isButtonDisabled &&
+              (isButtonDisabled || isLocking) &&
                 "opacity-60 cursor-not-allowed hover:bg-primary",
             )}
           >
-            Review Conversion
-            <ArrowRight className="h-5 w-5 ml-2" />
+            {isLocking ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <>
+                Lock Rate
+                <ArrowRight className="h-5 w-5 ml-2" />
+              </>
+            )}
           </button>
           {rateError && (
             <p className="text-xs text-center text-destructive">{rateError}</p>

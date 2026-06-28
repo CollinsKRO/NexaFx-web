@@ -265,6 +265,7 @@ export interface CreateSwapDto {
     fromCurrency: string;
     toCurrency: string;
     amount: string;
+    lockId?: string;
 }
 
 export interface SwapResponse {
