@@ -1,21 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { VerificationModal } from "@/components/profile/verification-modal";
-import { getProfile } from "@/lib/api/users";
+import { InfoIcon } from "@/components/ui/info-icon";
 
 export function VerificationBanner() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isVerified, setIsVerified] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    getProfile()
-      .then((profile) => setIsVerified(!!profile.isVerified))
-      .catch(() => setIsVerified(false));
-  }, []);
-
-  if (isVerified === null) return null;
-  if (isVerified) return null;
 
   return (
     <>
@@ -24,6 +14,7 @@ export function VerificationBanner() {
           <div className="space-y-1">
             <h3 className="text-lg font-bold text-foreground">
               Verify your account Now
+              <InfoIcon tooltip="KYC verification is required to access all features including withdrawals and higher transaction limits" />
             </h3>
             <p className="text-sm text-muted-foreground">
               Complete your verification to unlock full access

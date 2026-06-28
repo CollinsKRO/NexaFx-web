@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import { Bell } from "lucide-react";
 import { useNotificationsStore } from "@/hooks/use-notifications-store";
 import { SwipeableNotificationItem } from "@/components/notifications";
+import { EmptyState } from "@/components/shared/empty-state";
 
 function NotificationSkeleton() {
   return (
@@ -53,9 +55,11 @@ export default function NotificationsPage() {
             <p>{error}</p>
           </div>
         ) : notifications.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">
-            <p>No notifications yet</p>
-          </div>
+          <EmptyState
+            icon={<Bell className="h-16 w-16" />}
+            title="You're all caught up"
+            description="You'll see notifications here when there's activity on your account."
+          />
         ) : (
           <div className="divide-y divide-border">
             {notifications.map((notification) => (

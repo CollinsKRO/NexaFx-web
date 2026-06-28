@@ -8,7 +8,6 @@ import {
   CircleUserRound,
   ChevronLeft,
   ChevronRight,
-  ArrowUpDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/hooks/use-sidebar-store";
@@ -16,7 +15,7 @@ import Image from "next/image";
 
 const menuItems = [
   { icon: Home, label: "Dashboard", href: "/dashboard" },
-  { icon: ArrowUpDown, label: "Convert", href: "/convert" },
+  // { icon: ArrowUpDown, label: "Convert", href: "/convert" },
   { icon: Mail, label: "Transactions", href: "/transactions" },
   { icon: CircleUserRound, label: "Settings", href: "/settings" },
 ];

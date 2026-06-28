@@ -26,7 +26,7 @@ export default function CreatePushNotificationModal({
             onClick={onClose}
         >
             <div
-                className="bg-white rounded-xl w-full max-w-md p-6"
+                className="bg-white rounded-xl max-md:w-screen max-md:h-[100dvh] max-md:max-h-screen max-md:rounded-none max-md:overflow-y-auto w-full max-w-md p-6"
                 onClick={(e) => e.stopPropagation()}
             >
                 <h2 className="text-center font-bold text-lg mb-2">

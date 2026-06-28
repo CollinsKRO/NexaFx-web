@@ -1,9 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter, Manrope } from "next/font/google";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
-import { NextIntlClientProvider, useLocale } from "next-intl";
-import { notFound } from "next/navigation";
-import { Toaster } from "sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { PwaInstallPrompt } from "@/components/shared/pwa-install-prompt";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
@@ -28,8 +27,21 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "NexaFx",
-  description: "Multi-currency finance on Stellar",
+  title: {
+    default: "NexaFx — Multi-Currency Finance on Stellar",
+    template: "%s | NexaFx",
+  },
+  description:
+    "Convert, deposit, and transfer currencies instantly on the Stellar blockchain.",
+  keywords: [
+    "currency exchange",
+    "Stellar blockchain",
+    "cross-border payments",
+    "NGN to USD",
+    "crypto finance",
+  ],
+  authors: [{ name: "Nexacore" }],
+  creator: "Nexacore",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -41,6 +53,26 @@ export const metadata: Metadata = {
       { url: "/icons/icon-152x152.png", sizes: "152x152", type: "image/png" },
     ],
   },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://nexafx.io",
+    siteName: "NexaFx",
+    title: "NexaFx — Multi-Currency Finance on Stellar",
+    description:
+      "Convert, deposit, and transfer currencies instantly on the Stellar blockchain.",
+    images: [
+      { url: "/og-image.png", width: 1200, height: 630, alt: "NexaFx" },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "NexaFx — Multi-Currency Finance on Stellar",
+    description:
+      "Convert, deposit, and transfer currencies instantly on the Stellar blockchain.",
+    images: ["/og-image.png"],
+  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
@@ -54,11 +86,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-    <body
-      className={`${inter.variable} ${manrope.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
-    >
-      {children}
-    </body>
-  </html>
+      <body
+        className={`${inter.variable} ${manrope.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <TooltipProvider>
+          <LanguageSwitcher />
+          {children}
+          <PwaInstallPrompt />
+          <Toaster />
+        </TooltipProvider>
+      </body>
+    </html>
   );
 }
