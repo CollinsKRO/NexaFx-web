@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { getBalances } from "@/lib/api/wallet";
 import { createSwap } from "@/lib/api/transactions";
 import { getRequestErrorMessage } from "@/lib/api-client";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ConvertFormSkeleton } from "@/components/shared/page-skeletons";
 import { EmptyState } from "@/components/shared/empty-state";
 
 interface CurrencyOption {
@@ -32,6 +34,7 @@ export function ConvertForm() {
   const [errors, setErrors] = useState<{ amount?: string }>({});
 
   const [balances, setBalances] = useState<Record<string, string>>({});
+  const [isLoadingBalances, setIsLoadingBalances] = useState(true);
   const [exchangeRate, setExchangeRate] = useState<number>(0);
   const [isLoadingRate, setIsLoadingRate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,6 +48,7 @@ export function ConvertForm() {
     CURRENCIES.find((c) => c.id === toCurrency) || CURRENCIES[1];
 
   useEffect(() => {
+    setIsLoadingBalances(true);
     getBalances()
       .then((res) => {
         const newBalances: Record<string, string> = {};
@@ -60,7 +64,8 @@ export function ConvertForm() {
             fallback: "Unable to load balances. Please try again.",
           }),
         });
-      });
+      })
+      .finally(() => setIsLoadingBalances(false));
   }, []);
 
     useEffect(() => {
@@ -208,6 +213,10 @@ export function ConvertForm() {
     !!rateError ||
     isLoadingRate ||
     isSubmitting;
+
+  if (isLoadingBalances) {
+    return <ConvertFormSkeleton />;
+  }
 
   return (
     <div className="w-full max-w-md mx-auto px-4 py-6">
@@ -465,11 +474,9 @@ export function ConvertForm() {
         {/* Rate Preview */}
         <div className="space-y-2">
           {isLoadingRate ? (
-            <div className="flex items-center justify-center px-4 py-3 rounded-lg bg-muted/30 border border-border/50">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-2" />
-              <span className="text-sm text-muted-foreground">
-                Fetching live rates...
-              </span>
+            <div className="px-4 py-3 rounded-lg bg-muted/30 border border-border/50 space-y-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-40" />
             </div>
           ) : rateError ? (
             <EmptyState
