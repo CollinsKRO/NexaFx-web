@@ -1,130 +1,135 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
-import { ChevronDown, AlertCircle, ArrowDownUp, Loader2, BarChart3 } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { ChevronDown, AlertCircle, ArrowDownUp, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getBalances } from "@/lib/api/wallet";
 import { createSwap } from "@/lib/api/transactions";
+import { getExchangeRate } from "@/lib/api/exchange-rates";
+import { getCurrencies, type Currency } from "@/lib/api/currencies";
 import { getRequestErrorMessage } from "@/lib/api-client";
-import { EmptyState } from "@/components/shared/empty-state";
+import { toast } from "@/hooks/use-toast-store";
 
-interface CurrencyOption {
-  id: string;
-  name: string;
-  symbol: string;
-}
-
-const CURRENCIES: CurrencyOption[] = [
-  { id: "NGN", name: "Nigerian Naira", symbol: "₦" },
-  { id: "USD", name: "US Dollar", symbol: "$" },
-  { id: "EUR", name: "Euro", symbol: "€" },
-  { id: "GBP", name: "British Pound", symbol: "£" },
-  { id: "USDC", name: "USD Coin", symbol: "USDC" },
-  { id: "ETH", name: "Ethereum", symbol: "ETH" },
-];
+const RATE_UNAVAILABLE = "Rate unavailable — please try again later";
 
 export function ConvertForm() {
-  const [fromCurrency, setFromCurrency] = useState("USD");
-  const [toCurrency, setToCurrency] = useState("NGN");
+  const [fromCurrency, setFromCurrency] = useState("");
+  const [toCurrency, setToCurrency] = useState("");
   const [amount, setAmount] = useState("");
   const [showFromDropdown, setShowFromDropdown] = useState(false);
   const [showToDropdown, setShowToDropdown] = useState(false);
   const [errors, setErrors] = useState<{ amount?: string }>({});
 
   const [balances, setBalances] = useState<Record<string, string>>({});
+  const [currencyMeta, setCurrencyMeta] = useState<Record<string, Currency>>({});
   const [exchangeRate, setExchangeRate] = useState<number>(0);
   const [isLoadingRate, setIsLoadingRate] = useState(false);
+  const [isLoadingBalances, setIsLoadingBalances] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rateError, setRateError] = useState<string | null>(null);
-  const [rateRetryCount, setRateRetryCount] = useState(0);
-  const hadExchangeRateRef = useRef(false);
 
-  const fromCurrencyData =
-    CURRENCIES.find((c) => c.id === fromCurrency) || CURRENCIES[0];
-  const toCurrencyData =
-    CURRENCIES.find((c) => c.id === toCurrency) || CURRENCIES[1];
+  const walletCurrencies = useMemo(
+    () => Object.keys(balances).sort(),
+    [balances],
+  );
+
+  const refreshBalances = async () => {
+    const res = await getBalances();
+    const newBalances: Record<string, string> = {};
+    res.forEach((b) => {
+      newBalances[b.currency] = b.balance;
+    });
+    setBalances(newBalances);
+    return newBalances;
+  };
 
   useEffect(() => {
-    getBalances()
-      .then((res) => {
+    let cancelled = false;
+
+    async function loadWalletData() {
+      setIsLoadingBalances(true);
+      try {
+        const [balanceList, currencies] = await Promise.all([
+          getBalances(),
+          getCurrencies().catch(() => [] as Currency[]),
+        ]);
+
+        if (cancelled) return;
+
         const newBalances: Record<string, string> = {};
-        res.forEach((b) => {
+        balanceList.forEach((b) => {
           newBalances[b.currency] = b.balance;
         });
         setBalances(newBalances);
-      })
-      .catch((err) => {
-        console.error("Failed to fetch balances", err);
-        setErrors({
-          amount: getRequestErrorMessage(err, {
-            fallback: "Unable to load balances. Please try again.",
-          }),
+
+        const meta: Record<string, Currency> = {};
+        currencies.forEach((c) => {
+          meta[c.code] = c;
         });
-      });
+        setCurrencyMeta(meta);
+
+        const codes = Object.keys(newBalances);
+        if (codes.length >= 1) {
+          setFromCurrency(codes[0]);
+          setToCurrency(codes.length >= 2 ? codes[1] : codes[0]);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setErrors({
+            amount: getRequestErrorMessage(err, {
+              fallback: "Unable to load balances. Please try again.",
+            }),
+          });
+        }
+      } finally {
+        if (!cancelled) setIsLoadingBalances(false);
+      }
+    }
+
+    loadWalletData();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-    useEffect(() => {
-        if (!fromCurrency || !toCurrency) return;
-        
-        let active = true;
-        
-        Promise.resolve().then(() => {
-            if (active) {
-                setIsLoadingRate(true);
-                setRateError(null);
-            }
-        });
-        
-        fetch(`/api/exchange-rates?from=${fromCurrency}&to=${toCurrency}`)
-            .then(res => {
-                if (!res.ok) throw new Error("Failed to fetch rate");
-                return res.json();
-            })
-            .then(data => {
-                if (!active) return;
-                if (data.rate) {
-                    setExchangeRate(Number(data.rate));
-                } else {
-                    setExchangeRate(0);
-                    setRateError("Rates unavailable");
-                }
-            })
-            .catch(err => {
-                if (!active) return;
-                console.error(err);
-                setExchangeRate(0);
-                setRateError("Rates unavailable");
-            })
-            .finally(() => {
-                if (active) {
-                    setIsLoadingRate(false);
-                }
-            });
+  useEffect(() => {
+    if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) {
+      setExchangeRate(0);
+      setRateError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingRate(true);
+    setRateError(null);
 
     getExchangeRate(fromCurrency, toCurrency)
-      .then((data) => {
-        if (data.rate) {
-          hadExchangeRateRef.current = true;
-          setExchangeRate(Number(data.rate));
+      .then(({ rate }) => {
+        if (cancelled) return;
+        if (rate > 0) {
+          setExchangeRate(rate);
+          setRateError(null);
         } else {
           setExchangeRate(0);
-          setRateError("Rates unavailable");
+          setRateError(RATE_UNAVAILABLE);
         }
       })
-      .catch((err) => {
-        console.error(err);
+      .catch(() => {
+        if (cancelled) return;
         setExchangeRate(0);
-        setRateError(
-          getRequestErrorMessage(err, {
-            fallback: "Rates unavailable",
-            hasCachedData: hadExchangeRateRef.current,
-          }),
-        );
+        setRateError(RATE_UNAVAILABLE);
       })
       .finally(() => {
-        setIsLoadingRate(false);
+        if (!cancelled) setIsLoadingRate(false);
       });
-  }, [fromCurrency, toCurrency, rateRetryCount]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fromCurrency, toCurrency]);
+
+  const getCurrencyLabel = (code: string) =>
+    currencyMeta[code]?.name ?? code;
 
   const convertedAmount = useMemo(() => {
     if (!amount || isNaN(parseFloat(amount)) || exchangeRate === 0) return "";
@@ -146,6 +151,7 @@ export function ConvertForm() {
   };
 
   const fromBalanceStr = balances[fromCurrency] || "0.00";
+
   const handleMaxClick = () => {
     const balanceStr = fromBalanceStr.replace(/,/g, "");
     setAmount(parseFloat(balanceStr).toString());
@@ -163,6 +169,10 @@ export function ConvertForm() {
       setErrors({ amount: "Enter a valid amount" });
       return;
     }
+    if (fromCurrency === toCurrency) {
+      setErrors({ amount: "Select different currencies" });
+      return;
+    }
     const balanceNum = parseFloat(fromBalanceStr.replace(/,/g, ""));
     if (parseFloat(amount) > balanceNum) {
       setErrors({ amount: "Insufficient balance" });
@@ -172,29 +182,20 @@ export function ConvertForm() {
     setIsSubmitting(true);
     setErrors({});
     try {
-      const res = await createSwap({
+      await createSwap({
         fromCurrency,
         toCurrency,
-        amount,
+        amount: parseFloat(amount),
       });
-      if (res.status === "failed") {
-        setErrors({ amount: res.message || "Swap failed" });
-      } else {
-        // Success
-        setAmount("");
-        // Refresh balances
-        const bals = await getBalances();
-        const newBalances: Record<string, string> = {};
-        bals.forEach((b) => {
-          newBalances[b.currency] = b.balance;
-        });
-        setBalances(newBalances);
-      }
+      toast("Conversion successful", "success");
+      setAmount("");
+      await refreshBalances();
     } catch (err: unknown) {
-      const errorMessage = getRequestErrorMessage(err, {
-        fallback: "An error occurred during conversion",
+      setErrors({
+        amount: getRequestErrorMessage(err, {
+          fallback: "An error occurred during conversion",
+        }),
       });
-      setErrors({ amount: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
@@ -204,15 +205,34 @@ export function ConvertForm() {
     !amount ||
     isNaN(parseFloat(amount)) ||
     parseFloat(amount) <= 0 ||
+    fromCurrency === toCurrency ||
     exchangeRate === 0 ||
     !!rateError ||
     isLoadingRate ||
-    isSubmitting;
+    isSubmitting ||
+    isLoadingBalances;
+
+  if (isLoadingBalances) {
+    return (
+      <div className="w-full max-w-md mx-auto px-4 py-6 space-y-6 animate-pulse">
+        <div className="h-8 w-48 bg-muted rounded" />
+        <div className="h-40 bg-muted rounded-2xl" />
+        <div className="h-40 bg-muted rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (walletCurrencies.length === 0) {
+    return (
+      <div className="w-full max-w-md mx-auto px-4 py-6 text-center text-muted-foreground">
+        <p>No wallet balances available to convert.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md mx-auto px-4 py-6">
       <div className="space-y-6">
-        {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-1">
             Currency Convert
@@ -222,14 +242,11 @@ export function ConvertForm() {
           </p>
         </div>
 
-        {/* From Section */}
         <div className="space-y-4 bg-card rounded-2xl p-6 border border-border">
           <div>
             <label className="text-sm font-medium text-foreground block mb-3">
               From
             </label>
-
-            {/* Currency Selector */}
             <div className="relative mb-4">
               <button
                 type="button"
@@ -239,22 +256,14 @@ export function ConvertForm() {
                 }}
                 className={cn(
                   "w-full flex items-center justify-between px-4 py-3.5 rounded-xl",
-                  "bg-muted/50 border border-border",
-                  "hover:bg-muted transition-colors cursor-pointer",
+                  "bg-muted/50 border border-border hover:bg-muted transition-colors cursor-pointer",
                 )}
               >
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-xs text-primary">
-                    {fromCurrencyData.symbol.toUpperCase().substring(0, 1)}
-                  </div>
-                  <div className="text-left">
-                    <p className="font-semibold text-foreground">
-                      {fromCurrency}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {fromCurrencyData.name}
-                    </p>
-                  </div>
+                <div className="text-left">
+                  <p className="font-semibold text-foreground">{fromCurrency}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getCurrencyLabel(fromCurrency)}
+                  </p>
                 </div>
                 <ChevronDown
                   className={cn(
@@ -263,40 +272,30 @@ export function ConvertForm() {
                   )}
                 />
               </button>
-
-              {/* Dropdown */}
               {showFromDropdown && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-10">
-                  {CURRENCIES.map((curr) => (
+                  {walletCurrencies.map((code) => (
                     <button
-                      key={curr.id}
+                      key={code}
                       type="button"
                       onClick={() => {
-                        setFromCurrency(curr.id);
+                        setFromCurrency(code);
                         setShowFromDropdown(false);
                         setAmount("");
                       }}
                       className={cn(
-                        "w-full flex items-center justify-between px-4 py-3 text-left",
-                        "hover:bg-muted transition-colors",
-                        curr.id === fromCurrency && "bg-primary/10",
+                        "w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted transition-colors",
+                        code === fromCurrency && "bg-primary/10",
                       )}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-xs text-primary">
-                          {curr.symbol.toUpperCase().substring(0, 1)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">
-                            {curr.id}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {curr.name}
-                          </p>
-                        </div>
+                      <div>
+                        <p className="font-medium text-foreground">{code}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {getCurrencyLabel(code)}
+                        </p>
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        {balances[curr.id] || "0.00"}
+                        {balances[code] || "0.00"}
                       </span>
                     </button>
                   ))}
@@ -304,7 +303,6 @@ export function ConvertForm() {
               )}
             </div>
 
-            {/* Amount Input */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-foreground">
@@ -322,10 +320,7 @@ export function ConvertForm() {
                   value={amount}
                   onChange={handleAmountChange}
                   className={cn(
-                    "w-full px-4 py-3.5 pr-16 rounded-xl bg-muted/50 border",
-                    "text-base text-foreground placeholder:text-muted-foreground",
-                    "focus:outline-none focus:ring-2 focus:ring-primary/50",
-                    "transition-all duration-200",
+                    "w-full px-4 py-3.5 pr-16 rounded-xl bg-muted/50 border text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200",
                     errors.amount ? "border-destructive" : "border-border",
                   )}
                 />
@@ -347,31 +342,22 @@ export function ConvertForm() {
           </div>
         </div>
 
-        {/* Swap Button */}
         <div className="flex justify-center">
           <button
             type="button"
             onClick={handleSwap}
-            className={cn(
-              "p-3 rounded-full bg-card border border-border",
-              "hover:bg-muted/50 transition-colors",
-              "flex items-center justify-center",
-              "shadow-sm hover:shadow-md",
-            )}
+            className="p-3 rounded-full bg-card border border-border hover:bg-muted/50 transition-colors flex items-center justify-center shadow-sm hover:shadow-md"
             aria-label="Swap currencies"
           >
             <ArrowDownUp className="h-5 w-5 text-primary" />
           </button>
         </div>
 
-        {/* To Section */}
         <div className="space-y-4 bg-card rounded-2xl p-6 border border-border">
           <div>
             <label className="text-sm font-medium text-foreground block mb-3">
               To
             </label>
-
-            {/* Currency Selector */}
             <div className="relative mb-4">
               <button
                 type="button"
@@ -381,22 +367,14 @@ export function ConvertForm() {
                 }}
                 className={cn(
                   "w-full flex items-center justify-between px-4 py-3.5 rounded-xl",
-                  "bg-muted/50 border border-border",
-                  "hover:bg-muted transition-colors cursor-pointer",
+                  "bg-muted/50 border border-border hover:bg-muted transition-colors cursor-pointer",
                 )}
               >
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-xs text-primary">
-                    {toCurrencyData.symbol.toUpperCase().substring(0, 1)}
-                  </div>
-                  <div className="text-left">
-                    <p className="font-semibold text-foreground">
-                      {toCurrency}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {toCurrencyData.name}
-                    </p>
-                  </div>
+                <div className="text-left">
+                  <p className="font-semibold text-foreground">{toCurrency}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getCurrencyLabel(toCurrency)}
+                  </p>
                 </div>
                 <ChevronDown
                   className={cn(
@@ -405,39 +383,29 @@ export function ConvertForm() {
                   )}
                 />
               </button>
-
-              {/* Dropdown */}
               {showToDropdown && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-10">
-                  {CURRENCIES.map((curr) => (
+                  {walletCurrencies.map((code) => (
                     <button
-                      key={curr.id}
+                      key={code}
                       type="button"
                       onClick={() => {
-                        setToCurrency(curr.id);
+                        setToCurrency(code);
                         setShowToDropdown(false);
                       }}
                       className={cn(
-                        "w-full flex items-center justify-between px-4 py-3 text-left",
-                        "hover:bg-muted transition-colors",
-                        curr.id === toCurrency && "bg-primary/10",
+                        "w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted transition-colors",
+                        code === toCurrency && "bg-primary/10",
                       )}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-xs text-primary">
-                          {curr.symbol.toUpperCase().substring(0, 1)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">
-                            {curr.id}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {curr.name}
-                          </p>
-                        </div>
+                      <div>
+                        <p className="font-medium text-foreground">{code}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {getCurrencyLabel(code)}
+                        </p>
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        {balances[curr.id] || "0.00"}
+                        {balances[code] || "0.00"}
                       </span>
                     </button>
                   ))}
@@ -445,10 +413,9 @@ export function ConvertForm() {
               )}
             </div>
 
-            {/* Amount Display */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">
-                Amount
+                Estimated receive
               </label>
               <div className="px-4 py-3.5 rounded-xl bg-muted/50 border border-border flex items-center justify-between">
                 <span className="text-base text-foreground font-semibold">
@@ -462,38 +429,24 @@ export function ConvertForm() {
           </div>
         </div>
 
-        {/* Rate Preview */}
         <div className="space-y-2">
           {isLoadingRate ? (
-            <div className="flex items-center justify-center px-4 py-3 rounded-lg bg-muted/30 border border-border/50">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-2" />
-              <span className="text-sm text-muted-foreground">
-                Fetching live rates...
-              </span>
+            <div className="px-4 py-3 rounded-lg bg-muted/30 border border-border/50 space-y-2 animate-pulse">
+              <div className="h-4 w-28 bg-muted rounded" />
+              <div className="h-4 w-40 bg-muted rounded" />
             </div>
           ) : rateError ? (
-            <EmptyState
-              icon={<BarChart3 className="h-12 w-12" />}
-              title="Rates unavailable"
-              description="We're having trouble fetching exchange rates. Please try again in a few minutes."
-              action={{ label: "Retry", onClick: () => setRateRetryCount((c) => c + 1) }}
-            />
-          ) : amount && exchangeRate > 0 ? (
+            <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span className="text-sm font-medium">{rateError}</span>
+            </div>
+          ) : exchangeRate > 0 ? (
             <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-muted/30 border border-border/50">
-              <span className="text-sm text-muted-foreground inline-flex items-center gap-1">
-                Exchange Rate
-                <InfoIcon
-                  content="The spread is the difference between the buy and sell price"
-                  size="sm"
-                  side="top"
-                />
-              </span>
+              <span className="text-sm text-muted-foreground">Exchange Rate</span>
               <span className="text-sm font-semibold text-foreground">
-                 1 {fromCurrency} ={" "}
-                 <InfoIcon tooltip="Exchange rate includes a 0.5% conversion fee" />
+                1 {fromCurrency} ={" "}
                 {exchangeRate.toLocaleString(undefined, {
-                  minimumFractionDigits:
-                    fromCurrency === "ETH" || toCurrency === "ETH" ? 2 : 2,
+                  minimumFractionDigits: 2,
                   maximumFractionDigits:
                     fromCurrency === "ETH" || toCurrency === "ETH" ? 8 : 2,
                 })}{" "}
@@ -503,33 +456,16 @@ export function ConvertForm() {
           ) : null}
         </div>
 
-        {/* Info Section */}
-        <div className="space-y-2 pt-2">
-          <p className="text-xs text-muted-foreground text-center inline-flex items-center justify-center gap-1">
-            Exchange rates updated in real-time. Your conversion will be locked
-            at checkout.
-            <InfoIcon
-              content="Slippage may occur during high volatility — the final rate may differ slightly"
-              size="sm"
-              side="top"
-            />
-          </p>
-        </div>
-
-        {/* Convert Button */}
         <div className="space-y-3">
           <button
             type="button"
             onClick={handleSubmit}
             disabled={isButtonDisabled}
-            title={rateError ? "Rates unavailable" : undefined}
+            title={rateError ?? undefined}
             className={cn(
               "w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2",
-              "bg-primary text-primary-foreground",
-              "hover:bg-primary/90 active:scale-[0.98]",
-              "transition-all duration-200",
-              isButtonDisabled &&
-                "opacity-60 cursor-not-allowed hover:bg-primary",
+              "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-all duration-200",
+              isButtonDisabled && "opacity-60 cursor-not-allowed hover:bg-primary",
             )}
           >
             {isSubmitting ? (
@@ -541,9 +477,6 @@ export function ConvertForm() {
               "Convert Now"
             )}
           </button>
-          {rateError && (
-            <p className="text-xs text-center text-destructive">{rateError}</p>
-          )}
         </div>
       </div>
     </div>
