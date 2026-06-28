@@ -49,6 +49,12 @@ export function WithdrawalReview() {
         setTimeout(() => reset(), 300);
     };
 
+    const handleCancel = () => {
+        if (isProcessing) return;
+        close();
+        setTimeout(() => reset(), 300);
+    };
+
     return (
         <div className="p-6 space-y-6">
             {/* Header */}

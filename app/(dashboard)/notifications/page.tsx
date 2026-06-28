@@ -41,12 +41,7 @@ export default function NotificationsPage() {
     removeNotification(id);
   };
 
-  const handleRefresh = useCallback(async () => {
-    await fetchNotifications();
-  }, [fetchNotifications]);
-
   return (
-    <PullToRefresh onRefresh={handleRefresh}>
     <div className="max-w-2xl mx-auto">
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         {isLoading ? (
@@ -55,7 +50,7 @@ export default function NotificationsPage() {
               <NotificationSkeleton key={i} />
             ))}
           </div>
-        ) : error && notifications.length === 0 ? (
+        ) : error ? (
           <div className="p-8 text-center text-destructive">
             <p>{error}</p>
           </div>
@@ -66,26 +61,18 @@ export default function NotificationsPage() {
             description="You'll see notifications here when there's activity on your account."
           />
         ) : (
-          <>
-            {error && (
-              <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                <p>{error}</p>
-              </div>
-            )}
-            <div className="divide-y divide-border">
-              {notifications.map((notification) => (
-                <SwipeableNotificationItem
-                  key={notification.id}
-                  notification={notification}
-                  onClick={() => handleNotificationClick(notification.id)}
-                  onDelete={() => handleDelete(notification.id)}
-                />
-              ))}
-            </div>
-          </>
+          <div className="divide-y divide-border">
+            {notifications.map((notification) => (
+              <SwipeableNotificationItem
+                key={notification.id}
+                notification={notification}
+                onClick={() => handleNotificationClick(notification.id)}
+                onDelete={() => handleDelete(notification.id)}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>
-    </PullToRefresh>
   );
 }
