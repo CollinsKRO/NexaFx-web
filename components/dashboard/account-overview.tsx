@@ -4,6 +4,12 @@ import {
   ChevronDown,
   Download,
   Upload,
+  CircleDollarSign,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { getBalances } from "@/lib/api/wallet";
+import { getProfile } from "@/lib/api/users";
+import { CopyButton } from "@/components/ui/copy-button";
   Copy,
   Check,
   CircleDollarSign,
@@ -171,6 +177,10 @@ export function AccountOverview({
                 <Skeleton className="hidden md:block h-9 w-36" />
               ) : !error ? (
                 <div className="hidden md:inline-flex md:items-center gap-2 bg-muted rounded-sm border border-border px-4 py-2">
+                  <p className="text-xs font-medium text-foreground">
+                    {truncateAddress(walletAddress)}
+                  </p>
+                  <CopyButton value={walletAddress} label="Copy wallet address" size="sm" />
                   <Tooltip content={`Stellar wallet: ${walletAddress}`}>
                     <p className="text-xs font-medium text-foreground">
                       {truncateAddress(walletAddress)}
