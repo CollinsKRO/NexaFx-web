@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -19,6 +18,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [offlineNotice, setOfflineNotice] = useState<string | null>(null);
+
   const hasCachedAnalyticsRef = useRef(false);
 
   useEffect(() => {
@@ -37,16 +37,22 @@ export default function AnalyticsPage() {
       } catch (err: unknown) {
         console.error("Error fetching analytics data:", err);
         const hasCachedData = hasCachedAnalyticsRef.current;
-        const message = getRequestErrorMessage(err, {
-          fallback: "Failed to load analytics data.",
-          hasCachedData,
-        });
-
-        if (isOfflineError(err) && hasCachedData) {
-          setOfflineNotice(message);
+        if (isOfflineError(err)) {
+          if (hasCachedData) {
+            setOfflineNotice(
+              "You are offline. Showing cached analytics data."
+            );
+          } else {
+            setError(
+              "You are offline and no cached data is available. Please try again when online."
+            );
+          }
         } else {
-          setOfflineNotice(null);
-          setError(message);
+          setError(
+            getRequestErrorMessage(err, {
+              fallback: "Failed to load analytics data. Please try again.",
+            })
+          );
         }
       } finally {
         setLoading(false);
@@ -82,10 +88,34 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       {offlineNotice && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm">
           {offlineNotice}
         </div>
       )}
+
+      {/* Metric cards */}
+      <div className="flex flex-wrap gap-4">
+        <AdminMetricCard
+          label="Registered Users"
+          value={metrics?.registeredUsers ?? 0}
+          icon={UserPlus}
+        />
+        <AdminMetricCard
+          label="Total Transaction"
+          value={metrics?.totalTransactions ?? 0}
+          icon={ArrowUpDown}
+        />
+        <AdminMetricCard
+          label="Pending KYC"
+          value={metrics?.pendingKyc ?? 0}
+          icon={Clock}
+        />
+        <AdminMetricCard
+          label="Currency"
+          value={metrics?.currencies ?? 0}
+          icon={Coins}
+        />
+      </div>
 
       {/* Overview section header */}
       <div className="flex items-center justify-between">
@@ -97,30 +127,6 @@ export default function AnalyticsPage() {
         </button>
       </div>
 
-      {/* Metric cards */}
-      <div className="flex flex-wrap gap-4">
-        <AdminMetricCard
-          label="Registered Users"
-          value={metrics.registeredUsers}
-          icon={UserPlus}
-        />
-        <AdminMetricCard
-          label="Total Transaction"
-          value={metrics.totalTransactions}
-          icon={ArrowUpDown}
-        />
-        <AdminMetricCard
-          label="Pending KYC"
-          value={metrics.pendingKyc}
-          icon={Clock}
-        />
-        <AdminMetricCard
-          label="Currency"
-          value={metrics.currencies}
-          icon={Coins}
-        />
-      </div>
-
       {/* Revenue chart + deposits/withdrawals */}
       <div className="flex gap-4 overflow-x-auto">
         <RevenueChart />
@@ -129,9 +135,7 @@ export default function AnalyticsPage() {
         <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 w-[43%] shrink-0">
           <div className="h-[126px] flex items-center pl-6 border-b border-gray-200">
             <div className="flex flex-col gap-2">
-              <p className="text-xs font-medium leading-none text-gray-500">
-                Total Deposits
-              </p>
+              <p className="text-xs font-medium leading-none text-gray-500">Total Deposits</p>
               <p className="text-[32px] font-semibold leading-none text-gray-900">
                 {(metrics.totalDeposits ?? 0).toLocaleString()}
               </p>
@@ -139,9 +143,7 @@ export default function AnalyticsPage() {
           </div>
           <div className="h-[126px] flex items-center pl-6">
             <div className="flex flex-col gap-2">
-              <p className="text-xs font-medium leading-none text-gray-500">
-                Total Withdrawals
-              </p>
+              <p className="text-xs font-medium leading-none text-gray-500">Total Withdrawals</p>
               <p className="text-[32px] font-semibold leading-none text-gray-900">
                 {(metrics.totalWithdrawals ?? 0).toLocaleString()}
               </p>

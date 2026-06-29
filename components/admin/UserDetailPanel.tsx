@@ -34,10 +34,7 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
       } catch (err) {
         if (isOfflineError(err)) {
           setOfflineNotice(
-            getRequestErrorMessage(err, {
-              fallback: "Unable to load user details",
-              hasCachedData: true,
-            }),
+            "You are offline. Showing available user data."
           );
         }
         console.warn(
@@ -70,8 +67,7 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
       onClose();
     } catch (err) {
       console.error("Failed to delete user", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to delete user. Please try again.";
-      alert(errorMessage);
+      alert("Failed to delete user. Please try again.");
     } finally {
       setIsDeleting(false);
     }
@@ -85,8 +81,7 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
       onSuccess();
     } catch (err) {
       console.error("Failed to update KYC status", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to update KYC status. Please try again.";
-      alert(errorMessage);
+      alert("Failed to update KYC status. Please try again.");
     } finally {
       setIsUpdatingKyc(false);
     }
@@ -104,15 +99,13 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
 
       {/* Mobile: Bottom sheet | Desktop: Side panel */}
-      <div className="fixed inset-x-0 bottom-0 lg:right-0 lg:top-10 lg:inset-x-auto max-h-[85vh] lg:h-[590px] w-full lg:w-[710px] bg-white shadow-2xl z-50 overflow-y-auto rounded-t-3xl lg:rounded-lg lg:mr-4">
+      <div className="fixed inset-x-0 bottom-0 lg:right-0 lg:top-10 lg:inset-x-auto max-h-[85vh] lg:h-[590px] w-full lg:w-[710px] bg-white shadow-2xl z-50 overflow-y-auto rounded-t-3xl lg:rounded-none">
         {/* Header */}
         <div className="sticky top-0 bg-white px-4 lg:px-5 py-4 flex items-center justify-center lg:justify-between border-b border-gray-200">
           <h2 className="text-base font-medium text-gray-900">
-            User Details{" "}
+            User Details
             {detailsLoading && (
-              <span className="ml-2 text-xs text-gray-400 animate-pulse">
-                (fetching details...)
-              </span>
+              <span className="ml-2 text-xs text-gray-400 animate-pulse">(fetching details...)</span>
             )}
           </h2>
           <button onClick={onClose} className="hidden lg:block p-1 hover:bg-gray-100 rounded-full transition-colors absolute right-4">
@@ -125,7 +118,7 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
           <div className="grid grid-cols-1 lg:grid-cols-[160px_1fr] gap-6">
             {/* Avatar */}
             <div className="flex justify-center lg:block">
-              <div className="h-40 w-40 rounded-lg bg-purple-400 flex items-center justify-center text-4xl font-bold text-white">
+              <div className="w-[160px] h-[160px] rounded-lg bg-purple-400 flex items-center justify-center text-4xl font-bold text-white">
                 {getInitials()}
               </div>
             </div>
@@ -133,34 +126,24 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
             {/* Content */}
             <div className="space-y-5">
               {offlineNotice && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm">
                   {offlineNotice}
                 </div>
               )}
+
               {/* Personal Info */}
               <div className="bg-white lg:rounded-lg lg:border lg:border-gray-200 lg:p-5">
                 <div className="flex items-center gap-2 mb-6">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Personal Info
-                  </h3>
-                  <button
-                    onClick={() => setShowSensitiveInfo(!showSensitiveInfo)}
-                    className="p-1 hover:bg-gray-100 rounded transition-colors"
-                  >
-                    {showSensitiveInfo ? (
-                      <Eye className="w-5 h-5 text-gray-400" />
-                    ) : (
-                      <EyeOff className="w-5 h-5 text-gray-400" />
-                    )}
+                  <h3 className="text-lg font-medium text-gray-900">Personal Info</h3>
+                  <button onClick={() => setShowSensitiveInfo(!showSensitiveInfo)} className="p-1 hover:bg-gray-100 rounded transition-colors">
+                    {showSensitiveInfo ? <Eye className="w-5 h-5 text-gray-400" /> : <EyeOff className="w-5 h-5 text-gray-400" />}
                   </button>
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <p className="text-sm text-gray-500">Name</p>
-                    <p className="text-sm text-gray-900 font-medium">
-                      {showSensitiveInfo ? (currentUser.firstName && currentUser.lastName ? `${currentUser.firstName} ${currentUser.lastName}` : 'No name') : '••••••••'}
-                    </p>
+                    <p className="text-sm text-gray-900 font-medium">{showSensitiveInfo ? (currentUser.firstName && currentUser.lastName ? `${currentUser.firstName} ${currentUser.lastName}` : 'No name') : '••••••••'}</p>
                   </div>
                   <div className="flex justify-between items-center">
                     <p className="text-sm text-gray-500">Email address</p>
@@ -218,19 +201,19 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
                       <button
                         onClick={() => handleKycStatusUpdate('Verified')}
                         disabled={isUpdatingKyc}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-green-500/10 text-green-600 rounded hover:bg-green-500/20 transition-colors text-sm font-medium disabled:opacity-50"
                       >
-                        <Check className="w-3.5 h-3.5" />
-                        Approve KYC
+                        <Check className="w-4 h-4" />
+                        Verify
                       </button>
                     ) : (
                       <button
                         onClick={() => handleKycStatusUpdate('Unverified')}
                         disabled={isUpdatingKyc}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-600 rounded hover:bg-red-500/20 transition-colors text-sm font-medium disabled:opacity-50"
                       >
-                        <Ban className="w-3.5 h-3.5" />
-                        Reject KYC
+                        <Ban className="w-4 h-4" />
+                        Unverify
                       </button>
                     )}
                   </div>
@@ -241,10 +224,7 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
               <div className="bg-white lg:rounded-lg lg:border lg:border-gray-200 lg:p-5">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Delete User</span>
-                  <button
-                    onClick={handleDelete}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
-                  >
+                  <button onClick={handleDelete} disabled={isDeleting} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium disabled:opacity-50">
                     <Trash2 className="w-4 h-4" />
                     Delete
                   </button>
@@ -263,11 +243,8 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
         </div>
 
         {/* Mobile Close Button */}
-        <div className="lg:hidden fixed bottom-0  right-0 p-4 bg-white border-t border-gray-200">
-          <button
-            onClick={onClose}
-            className="w-[186px]  py-3 border-2 border-gray-900 text-gray-900 rounded-full font-medium hover:bg-gray-50 transition-colors"
-          >
+        <div className="lg:hidden fixed bottom-0 right-0 p-4 bg-white border-t border-gray-200">
+          <button onClick={onClose} className="w-[186px] py-3 border-2 border-gray-900 text-gray-900 rounded-full font-medium hover:bg-gray-50 transition-colors">
             Close
           </button>
         </div>
@@ -276,18 +253,10 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
       {/* Delete Confirmation */}
       {showDeleteConfirm && (
         <>
-          <div
-            className="fixed inset-0 z-60 bg-black/50"
-            onClick={() => setShowDeleteConfirm(false)}
-          />
-          <div className="fixed top-1/2 left-1/2 z-70 mx-4 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Delete User
-            </h3>
-            <p className="text-sm text-gray-600 mb-6">
-              Are you sure you want to delete this user? This action cannot be
-              undone.
-            </p>
+          <div className="fixed inset-0 bg-black/50 z-[60]" onClick={() => setShowDeleteConfirm(false)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl p-6 z-[70] w-full max-w-sm mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete User</h3>
+            <p className="text-sm text-gray-600 mb-6">Are you sure you want to delete this user? This action cannot be undone.</p>
             <div className="flex gap-3 justify-end">
               <button 
                 onClick={() => setShowDeleteConfirm(false)} 
@@ -299,10 +268,10 @@ export function UserDetailPanel({ user: initialUser, onClose, onSuccess }: UserD
               <button 
                 onClick={confirmDelete} 
                 disabled={isDeleting}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center gap-2"
               >
-                {isDeleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Confirm
+                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {isDeleting ? 'Deleting...' : 'Confirm'}
               </button>
             </div>
           </div>

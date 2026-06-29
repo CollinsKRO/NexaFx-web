@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Transaction, getTransactions } from "@/lib/api/transactions";
 import { TransactionFilters } from "@/components/transactions/transaction-filters";
@@ -9,10 +9,7 @@ import { TransactionList } from "@/components/transactions/transaction-list";
 import { TransactionPagination } from "@/components/transactions/pagination";
 import { TransactionEmptyState } from "@/components/transactions/empty-state";
 import { TransactionDetails } from "@/components/transactions/transaction-details";
-import {
-  exportTransactionsToCSV,
-  generateCSVFilename,
-} from "@/app/lib/utils/csv-export";
+import { exportTransactionsToCSV, generateCSVFilename } from "@/lib/utils/export";
 import { getRequestErrorMessage, isOfflineError } from "@/lib/api-client";
 
 const ITEMS_PER_PAGE = 10;
@@ -117,17 +114,24 @@ function TransactionsContent() {
       } catch (err) {
         if (!cancelled) {
           const hasCachedData = cachedTransactionsRef.current.length > 0;
-          const message = getRequestErrorMessage(err, {
-            fallback: "Failed to load transactions",
-            hasCachedData,
-          });
-
-          if (isOfflineError(err) && hasCachedData) {
-            setOfflineNotice(message);
+          if (isOfflineError(err)) {
+            setOfflineNotice(
+              "You are offline. Showing cached transaction data."
+            );
+            setTransactions(cachedTransactionsRef.current);
             setError(null);
           } else {
-            setOfflineNotice(null);
-            setError(message);
+            setError(
+              getRequestErrorMessage(err, {
+                fallback: "Failed to load transactions",
+              })
+            );
+            if (hasCachedData) {
+              setOfflineNotice(
+                "Failed to load latest data. Showing cached transactions."
+              );
+              setTransactions(cachedTransactionsRef.current);
+            }
           }
         }
       } finally {
@@ -170,8 +174,8 @@ function TransactionsContent() {
           onExportCSV={handleExportCSV}
         />
 
-        {offlineNotice && transactions.length > 0 && (
-          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        {offlineNotice && (
+          <div className="mb-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm">
             {offlineNotice}
           </div>
         )}
