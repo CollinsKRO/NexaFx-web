@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -15,6 +14,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [offlineNotice, setOfflineNotice] = useState<string | null>(null);
+
   const hasCachedAnalyticsRef = useRef(false);
 
   useEffect(() => {
@@ -40,8 +40,11 @@ export default function AnalyticsPage() {
         if (isOfflineError(err) && hasCachedData) {
           setOfflineNotice(message);
         } else {
-          setOfflineNotice(null);
-          setError(message);
+          setError(
+            getRequestErrorMessage(err, {
+              fallback: "Failed to load analytics data. Please try again.",
+            })
+          );
         }
       } finally {
         setLoading(false);
@@ -72,7 +75,7 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       {offlineNotice && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm">
           {offlineNotice}
         </div>
       )}
@@ -105,7 +108,7 @@ export default function AnalyticsPage() {
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium leading-none text-gray-500">Total Deposits</p>
               <p className="text-[32px] font-semibold leading-none text-gray-900">
-                {metrics.totalDeposits.toLocaleString()}
+                {(metrics.totalDeposits ?? 0).toLocaleString()}
               </p>
             </div>
           </div>
@@ -113,7 +116,7 @@ export default function AnalyticsPage() {
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium leading-none text-gray-500">Total Withdrawals</p>
               <p className="text-[32px] font-semibold leading-none text-gray-900">
-                {metrics.totalWithdrawals.toLocaleString()}
+                {(metrics.totalWithdrawals ?? 0).toLocaleString()}
               </p>
             </div>
           </div>
@@ -122,41 +125,43 @@ export default function AnalyticsPage() {
 
       {/* Recent users table */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="px-6 py-4 text-left">
-                <span className="inline-block h-3 w-3 rounded-full bg-gray-800" />
-              </th>
-              <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 tracking-wide uppercase">User Email</th>
-              <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 tracking-wide uppercase">Full Name</th>
-              <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 tracking-wide uppercase">Phone Number</th>
-              <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 tracking-wide uppercase">Added On</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recentUsers.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-6 py-10 text-center text-gray-500">No recent users found.</td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="px-6 py-4 text-left">
+                  <span className="inline-block h-3 w-3 rounded-full bg-gray-800" />
+                </th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 tracking-wide uppercase">User Email</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 tracking-wide uppercase">Full Name</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 tracking-wide uppercase">Phone Number</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-gray-500 tracking-wide uppercase">Added On</th>
               </tr>
-            ) : (
-              recentUsers.map((user) => {
-                const fullName = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : null;
-                return (
-                  <tr key={user.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <span className={`inline-block h-2.5 w-2.5 rounded-full ${user.isActive ? "bg-green-500" : "bg-gray-300"}`} />
-                    </td>
-                    <td className="px-4 py-4 text-gray-900">{user.email}</td>
-                    <td className="px-4 py-4 text-gray-400">{fullName ?? "No name"}</td>
-                    <td className="px-4 py-4 text-gray-400">{user.phone ?? "No Phone number"}</td>
-                    <td className="px-4 py-4 font-semibold text-gray-900">{user.createdAt}</td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {recentUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-10 text-center text-gray-500">No recent users found.</td>
+                </tr>
+              ) : (
+                recentUsers.map((user) => {
+                  const fullName = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : null;
+                  return (
+                    <tr key={user.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <span className={`inline-block h-2.5 w-2.5 rounded-full ${user.isActive ? "bg-green-500" : "bg-gray-300"}`} />
+                      </td>
+                      <td className="px-4 py-4 text-gray-900">{user.email}</td>
+                      <td className="px-4 py-4 text-gray-400">{fullName ?? "No name"}</td>
+                      <td className="px-4 py-4 text-gray-400">{user.phone ?? "No Phone number"}</td>
+                      <td className="px-4 py-4 font-semibold text-gray-900">{user.createdAt}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

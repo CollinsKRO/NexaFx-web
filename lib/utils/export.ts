@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
+import { AdminTransaction } from "@/lib/api/admin";
 
 const escapeCsvField = (field: unknown) => {
   if (field === null || field === undefined) return '""'
@@ -21,6 +22,23 @@ const downloadCsv = (csvContent: string, filename: string) => {
   link.click()
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
+}
+
+export const exportTransactionsToCsv = (transactions: AdminTransaction[]): void => {
+  if (!transactions.length) return;
+  const headers = ['ID', 'Type', 'Status', 'Amount', 'Currency', 'Username', 'Date', 'TxId']
+  const rows = transactions.map(t => [
+    escapeCsvField(t.id),
+    escapeCsvField(t.type),
+    escapeCsvField(t.status),
+    escapeCsvField(t.amount),
+    escapeCsvField(t.currency),
+    escapeCsvField(t.username),
+    escapeCsvField(t.date),
+    escapeCsvField(t.txId),
+  ])
+  const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  downloadCsv(csvContent, `nexafx-admin-transactions-${new Date().toISOString().split('T')[0]}.csv`)
 }
 
 export const exportTransactionsCsv = (transactions: any[], filename: string): void => {

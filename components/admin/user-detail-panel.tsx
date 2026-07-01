@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { type AdminUser, getAdminUser } from '@/lib/api/admin';
+import { type AdminUser, getAdminUserById } from '@/lib/api/admin';
 import { X, Copy, Mail, Phone, User, Shield, Calendar, Landmark, Hash, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/utils/haptics';
@@ -28,7 +28,7 @@ export function UserDetailPanel({ userId, onClose }: UserDetailPanelProps) {
     try {
       setLoading(true);
       setError(null);
-      const data = await getAdminUser(userId);
+      const data = await getAdminUserById(userId);
       setUser(data);
     } catch (err: unknown) {
       console.error('Error fetching user details:', err);

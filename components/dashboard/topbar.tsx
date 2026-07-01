@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { Bell, Menu, User, Moon, Sun, HelpCircle } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import { useSidebarStore } from "@/hooks/use-sidebar-store";
 import { useNotificationsStore } from "@/hooks/use-notifications-store";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { KeyboardShortcutsModal } from "@/components/shared/keyboard-shortcuts-modal";
 import { NotificationsPanel } from "@/components/notifications";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 export function Topbar() {
   const pathname = usePathname();
@@ -16,13 +18,8 @@ export function Topbar() {
   const openSidebar = useSidebarStore((state) => state.open);
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
 
-  // Initialize state with a function that checks DOM on mount
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window !== "undefined") {
-      return document.documentElement.classList.contains("dark");
-    }
-    return false;
-  });
+  const { theme, setTheme } = useTheme();
+  const isDarkMode = theme === "dark";
 
   const {
     unreadCount,
@@ -35,13 +32,7 @@ export function Topbar() {
   }, [fetchUnreadCount]);
 
   const toggleTheme = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-    if (newMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    setTheme(isDarkMode ? "light" : "dark");
   };
 
   const shortcuts = [
@@ -57,6 +48,9 @@ export function Topbar() {
   // Format title from pathname: /dashboard -> Dashboard
   const title = pathname.split("/").filter(Boolean).pop() || "Dashboard";
   const capitalisedTitle = title.charAt(0).toUpperCase() + title.slice(1);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <>
@@ -75,6 +69,8 @@ export function Topbar() {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
+        <LanguageSwitcher />
+        
         <button
           onClick={toggleTheme}
           className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 hover:bg-muted rounded-full transition-colors text-foreground focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2"
@@ -82,10 +78,10 @@ export function Topbar() {
             isDarkMode ? "Switch to light mode" : "Switch to dark mode"
           }
         >
-          {isDarkMode ? (
-            <Sun className="h-5 w-5" />
+          {mounted ? (
+            isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />
           ) : (
-            <Moon className="h-5 w-5" />
+            <span className="h-5 w-5" />
           )}
         </button>
 

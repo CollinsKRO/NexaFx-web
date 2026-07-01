@@ -59,13 +59,7 @@ export function TransactionTable({ transactions, onTransactionClick }: Transacti
                 )}
               </td>
               <td className="px-6 py-4 text-sm text-muted-foreground">
-                {new Date(tx.createdAt).toLocaleString("en-GB", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {tx.date}
               </td>
               <td className="px-6 py-4">
                 <span

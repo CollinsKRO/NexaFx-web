@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 "use client";
 
 import { ProfileOverview } from "@/components/profile/profile-overview";
@@ -36,18 +35,6 @@ export default function ProfilePage() {
       {/* Full Width FAQ Section */}
       <div className="w-full">
         <FAQSection />
-=======
-// app/(dashboard)/page.tsx
-"use client";
-
-export default function DashboardPage() {
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
-        <p className="text-gray-600">Welcome back!</p>
->>>>>>> 3042a2a (feat: worked on dashboard sidebar and navbar)
       </div>
     </div>
   );

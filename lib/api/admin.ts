@@ -36,6 +36,8 @@ export interface AdminTransaction {
     date: string;
     txId: string;
     status: string;
+    toAmount?: number;
+    toCurrency?: string;
 }
 
 export interface AdminUsersQuery {
@@ -265,12 +267,55 @@ export async function getAdminTransactions(query: AdminTransactionsQuery = {}): 
             date: formattedDate,
             txId: tx.txId ?? tx.reference ?? tx.transactionRef ?? '',
             status: tx.status ?? 'Pending',
+            toAmount: Number(tx.toAmount ?? tx.to_amount) || undefined,
+            toCurrency: tx.toCurrency ?? tx.to_currency ?? undefined,
         };
     });
 
     return { data: mappedData, total };
 }
 
+// Feature branch: PushNotifications (for push-notifications admin page)
+export interface PushNotification {
+    id: string;
+    title: string;
+    message: string;
+    status: 'Active' | 'Inactive';
+    createdAt: string;
+}
+
+export async function getAdminPushNotifications(): Promise<PushNotification[]> {
+    const response = await apiClient<any>('/admin/push-notifications', {
+        method: 'GET',
+        headers: getAuthHeaders(),
+    });
+    const data = (response?.data ?? response ?? []) as any[];
+    return data.map((n: any) => ({
+        id: n.id ?? n._id ?? '',
+        title: n.title ?? '',
+        message: n.message ?? '',
+        status: n.status ?? 'Active',
+        createdAt: n.createdAt ? new Date(n.createdAt).toLocaleDateString() : '',
+    }));
+}
+
+export async function createAdminPushNotification(payload: { title: string; message: string }): Promise<PushNotification> {
+    const response = await apiClient<any>('/admin/push-notifications', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+    });
+    const n = response?.data ?? response ?? {};
+    return {
+        id: n.id ?? n._id ?? '',
+        title: n.title ?? payload.title,
+        message: n.message ?? payload.message,
+        status: n.status ?? 'Active',
+        createdAt: n.createdAt ? new Date(n.createdAt).toLocaleDateString() : new Date().toLocaleDateString(),
+    };
+}
+
+// Upstream: Announcements (for announcements admin page)
 export interface Announcement {
     id: string;
     title: string;

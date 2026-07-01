@@ -26,6 +26,7 @@ export interface Transaction {
     fee?: number;
     exchangeRate?: number;
     toAmount?: number;
+    walletAddress?: string;
 }
 
 export interface TransactionQueryDto {
@@ -99,6 +100,7 @@ function mapTransaction(dto: Record<string, any>): Transaction {
         fee: dto.fee as number | undefined,
         exchangeRate: (dto.exchangeRate ?? dto.exchange_rate) as number | undefined,
         toAmount: (dto.toAmount ?? dto.to_amount) as number | undefined,
+        walletAddress: (dto.walletAddress ?? dto.wallet_address ?? dto.address) as string | undefined,
     };
 }
 
@@ -298,6 +300,7 @@ export interface CreateSwapDto {
     fromCurrency: string;
     toCurrency: string;
     amount: number;
+    lockId?: string;
 }
 
 export async function createSwap(data: CreateSwapDto): Promise<Transaction> {

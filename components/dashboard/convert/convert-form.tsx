@@ -1,52 +1,75 @@
-"use client";
+﻿"use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { ChevronDown, AlertCircle, ArrowDownUp, Loader2 } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { ChevronDown, AlertCircle, ArrowDownUp, Loader2, ArrowRight } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { getBalances } from "@/lib/api/wallet";
 import { createSwap } from "@/lib/api/transactions";
-import { getExchangeRate } from "@/lib/api/exchange-rates";
-import { getCurrencies, type Currency } from "@/lib/api/currencies";
+import { getExchangeRate, lockExchangeRate, type LockedRate } from "@/lib/api/exchange-rates";
 import { getRequestErrorMessage } from "@/lib/api-client";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ConvertFormSkeleton } from "@/components/shared/page-skeletons";
-import { EmptyState } from "@/components/shared/empty-state";
-import { toast } from "@/hooks/use-toast-store";
+import { getCurrencies, type Currency } from "@/lib/api/currencies";
 
-const RATE_UNAVAILABLE = "Rate unavailable — please try again later";
+const RATE_UNAVAILABLE = "Rate unavailable ΓÇö please try again later";
+
+const convertSchema = z.object({
+  amount: z.string()
+    .min(1, "Amount is required")
+    .refine((val) => {
+      const num = parseFloat(val.replace(/,/g, ""));
+      return !isNaN(num) && num > 0;
+    }, "Enter a valid amount"),
+});
+
+type ConvertFormValues = z.infer<typeof convertSchema>;
 
 export function ConvertForm() {
-  const [fromCurrency, setFromCurrency] = useState("");
-  const [toCurrency, setToCurrency] = useState("");
-  const [amount, setAmount] = useState("");
+  const [fromCurrency, setFromCurrency] = useState("USD");
+  const [toCurrency, setToCurrency] = useState("NGN");
   const [showFromDropdown, setShowFromDropdown] = useState(false);
   const [showToDropdown, setShowToDropdown] = useState(false);
-  const [errors, setErrors] = useState<{ amount?: string }>({});
+
+  const [step, setStep] = useState<"input" | "confirm">("input");
 
   const [balances, setBalances] = useState<Record<string, string>>({});
   const [isLoadingBalances, setIsLoadingBalances] = useState(true);
   const [currencyMeta, setCurrencyMeta] = useState<Record<string, Currency>>({});
   const [exchangeRate, setExchangeRate] = useState<number>(0);
   const [isLoadingRate, setIsLoadingRate] = useState(false);
-  const [isLoadingBalances, setIsLoadingBalances] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [rateError, setRateError] = useState<string | null>(null);
+
+  const [lockDetails, setLockDetails] = useState<LockedRate | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [isLocking, setIsLocking] = useState(false);
+
+  const hadExchangeRateRef = useRef(false);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    setError,
+    clearErrors,
+    formState: { errors, isSubmitting },
+  } = useForm<ConvertFormValues>({
+    resolver: zodResolver(convertSchema),
+    defaultValues: { amount: "" },
+  });
+
+  const amount = watch("amount");
 
   const walletCurrencies = useMemo(
     () => Object.keys(balances).sort(),
     [balances],
   );
 
-  const refreshBalances = async () => {
-    const res = await getBalances();
-    const newBalances: Record<string, string> = {};
-    res.forEach((b) => {
-      newBalances[b.currency] = b.balance;
-    });
-    setBalances(newBalances);
-    return newBalances;
-  };
+  const getCurrencyLabel = (code: string) =>
+    currencyMeta[code]?.name ?? code;
 
+  // Load balances and currencies on mount
   useEffect(() => {
     let cancelled = false;
 
@@ -59,6 +82,7 @@ export function ConvertForm() {
         ]);
 
         if (cancelled) return;
+
         const newBalances: Record<string, string> = {};
         balanceList.forEach((b) => {
           newBalances[b.currency] = b.balance;
@@ -78,8 +102,8 @@ export function ConvertForm() {
         }
       } catch (err) {
         if (!cancelled) {
-          setErrors({
-            amount: getRequestErrorMessage(err, {
+          setError("root", {
+            message: getRequestErrorMessage(err, {
               fallback: "Unable to load balances. Please try again.",
             }),
           });
@@ -93,8 +117,9 @@ export function ConvertForm() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setError]);
 
+  // Fetch exchange rate when currencies change
   useEffect(() => {
     if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) {
       setExchangeRate(0);
@@ -102,37 +127,55 @@ export function ConvertForm() {
       return;
     }
 
-    let cancelled = false;
-    setIsLoadingRate(true);
-    setRateError(null);
+    let active = true;
+
+    Promise.resolve().then(() => {
+      if (active) {
+        setIsLoadingRate(true);
+        setRateError(null);
+      }
+    });
 
     getExchangeRate(fromCurrency, toCurrency)
-      .then(({ rate }) => {
-        if (cancelled) return;
-        if (rate > 0) {
-          setExchangeRate(rate);
+      .then((data) => {
+        if (!active) return;
+        if (data.rate) {
+          hadExchangeRateRef.current = true;
+          setExchangeRate(Number(data.rate));
           setRateError(null);
         } else {
           setExchangeRate(0);
           setRateError(RATE_UNAVAILABLE);
         }
       })
-      .catch(() => {
-        if (cancelled) return;
+      .catch((err) => {
+        if (!active) return;
+        console.error(err);
         setExchangeRate(0);
         setRateError(RATE_UNAVAILABLE);
       })
       .finally(() => {
-        if (!cancelled) setIsLoadingRate(false);
+        if (active) setIsLoadingRate(false);
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { active = false; };
   }, [fromCurrency, toCurrency]);
 
-  const getCurrencyLabel = (code: string) =>
-    currencyMeta[code]?.name ?? code;
+  // Countdown timer for locked rate
+  useEffect(() => {
+    if (step !== "confirm" || timeLeft <= 0) return;
+
+    const timerId = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerId);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timerId);
+  }, [step, timeLeft]);
 
   const convertedAmount = useMemo(() => {
     if (!amount || isNaN(parseFloat(amount)) || exchangeRate === 0) return "";
@@ -145,62 +188,87 @@ export function ConvertForm() {
     });
   }, [amount, exchangeRate, fromCurrency, toCurrency]);
 
+  const fromBalanceStr = balances[fromCurrency] || "0.00";
+
   const handleSwap = () => {
     setFromCurrency(toCurrency);
     setToCurrency(fromCurrency);
-    setAmount("");
+    setValue("amount", "");
     setShowFromDropdown(false);
     setShowToDropdown(false);
   };
 
-  const fromBalanceStr = balances[fromCurrency] || "0.00";
-
   const handleMaxClick = () => {
     const balanceStr = fromBalanceStr.replace(/,/g, "");
-    setAmount(parseFloat(balanceStr).toString());
-    if (errors.amount) setErrors((prev) => ({ ...prev, amount: undefined }));
+    setValue("amount", parseFloat(balanceStr).toString(), { shouldValidate: true });
   };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9.]/g, "");
-    setAmount(value);
-    if (errors.amount) setErrors((prev) => ({ ...prev, amount: undefined }));
+    setValue("amount", value, { shouldValidate: true });
   };
 
-  const handleSubmit = async () => {
-    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-      setErrors({ amount: "Enter a valid amount" });
-      return;
-    }
-    if (fromCurrency === toCurrency) {
-      setErrors({ amount: "Select different currencies" });
-      return;
-    }
+  const onPreview = async (data: ConvertFormValues) => {
     const balanceNum = parseFloat(fromBalanceStr.replace(/,/g, ""));
-    if (parseFloat(amount) > balanceNum) {
-      setErrors({ amount: "Insufficient balance" });
+    const amountNum = parseFloat(data.amount);
+    if (amountNum > balanceNum) {
+      setError("amount", { message: "Insufficient balance" });
       return;
     }
+    clearErrors();
+    setIsLocking(true);
 
-    setIsSubmitting(true);
-    setErrors({});
     try {
-      await createSwap({
+      const lockRes = await lockExchangeRate(fromCurrency, toCurrency, amountNum);
+      setLockDetails(lockRes);
+      // Determine seconds until expiry
+      const expiry = new Date(lockRes.expiresAt).getTime();
+      const now = Date.now();
+      let diff = Math.max(0, Math.floor((expiry - now) / 1000));
+      if (diff === 0 || isNaN(diff)) diff = 300; // default 5 mins
+      setTimeLeft(diff);
+      setStep("confirm");
+    } catch (err: unknown) {
+      console.warn("Backend rate lock not available or failed, using fallback", err);
+      // Fallback flow ΓÇö proceed without server lock
+      setLockDetails(null);
+      setTimeLeft(30);
+      setStep("confirm");
+    } finally {
+      setIsLocking(false);
+    }
+  };
+
+  const onConfirm = async () => {
+    clearErrors();
+    try {
+      const res = await createSwap({
         fromCurrency,
         toCurrency,
-        amount: parseFloat(amount),
+        amount,
+        lockId: lockDetails?.lockId,
       });
-      toast("Conversion successful", "success");
-      setAmount("");
-      await refreshBalances();
+      if (res.status === "failed") {
+        setError("root", { message: res.message || "Swap failed" });
+        setStep("input");
+      } else {
+        // Success
+        setValue("amount", "");
+        setStep("input");
+        // Refresh balances
+        const bals = await getBalances();
+        const newBalances: Record<string, string> = {};
+        bals.forEach((b) => {
+          newBalances[b.currency] = b.balance;
+        });
+        setBalances(newBalances);
+      }
     } catch (err: unknown) {
-      setErrors({
-        amount: getRequestErrorMessage(err, {
-          fallback: "An error occurred during conversion",
-        }),
+      const errorMessage = getRequestErrorMessage(err as Error, {
+        fallback: "An error occurred during conversion",
       });
-    } finally {
-      setIsSubmitting(false);
+      setError("root", { message: errorMessage });
+      setStep("input");
     }
   };
 
@@ -233,13 +301,129 @@ export function ConvertForm() {
     );
   }
 
-  if (isLoadingBalances) {
-    return <ConvertFormSkeleton />;
+  if (step === "confirm") {
+    const isExpired = timeLeft === 0;
+    const mins = Math.floor(timeLeft / 60);
+    const secs = timeLeft % 60;
+    const formattedTime = `${mins}:${secs.toString().padStart(2, "0")}`;
+
+    const maxTime = lockDetails ? 300 : 30; // approx max time for progress bar
+    const progressPercent = Math.max(0, (timeLeft / maxTime) * 100);
+
+    return (
+      <div className="w-full max-w-md mx-auto px-4 py-6">
+        <div className="space-y-6">
+          {isExpired ? (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-6 text-center">
+              <h1 className="text-xl font-bold text-destructive mb-2">Rate Expired</h1>
+              <p className="text-sm text-destructive/80 mb-6">
+                Your rate has expired. Lock a new rate to continue.
+              </p>
+              <button
+                type="button"
+                onClick={() => setStep("input")}
+                className="w-full py-3.5 rounded-xl font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Get new rate
+              </button>
+            </div>
+          ) : (
+            <>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground mb-1">Confirm Conversion</h1>
+                <p className="text-sm text-muted-foreground">Please review the details before confirming.</p>
+              </div>
+
+              {/* Timer UI */}
+              <div className="bg-card rounded-2xl p-4 border border-border">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-foreground">
+                    Rate locked
+                  </span>
+                  <span className={cn(
+                    "text-sm font-bold tabular-nums",
+                    timeLeft < 60 ? "text-destructive" : "text-primary"
+                  )}>
+                    expires in {formattedTime}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full transition-all duration-1000 ease-linear rounded-full",
+                      timeLeft < 60 ? "bg-destructive" : "bg-primary"
+                    )}
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="bg-card rounded-2xl p-6 border border-border space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">You pay</span>
+                  <span className="font-semibold text-foreground">{amount} {fromCurrency}</span>
+                </div>
+
+                <div className="flex justify-center py-2">
+                  <ArrowDownUp className="h-5 w-5 text-muted-foreground" />
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">You receive</span>
+                  <span className="font-semibold text-foreground">
+                    {lockDetails
+                      ? lockDetails.toAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })
+                      : convertedAmount}{" "}
+                    {toCurrency}
+                  </span>
+                </div>
+
+                <div className="border-t border-border pt-4 mt-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Exchange Rate</span>
+                    <span className="text-sm font-medium text-foreground">
+                      1 {fromCurrency} = {lockDetails ? lockDetails.rate : exchangeRate} {toCurrency}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {errors.root && (
+                <div className="flex items-center gap-1.5 text-destructive bg-destructive/10 p-3 rounded-xl border border-destructive/20">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span className="text-sm">{errors.root.message}</span>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep("input")}
+                  disabled={isSubmitting}
+                  className="flex-1 py-3.5 rounded-xl font-semibold bg-muted text-foreground hover:bg-muted/80 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit(onConfirm)}
+                  disabled={isSubmitting}
+                  className="flex-1 py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60"
+                >
+                  {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Confirm Swap"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="w-full max-w-md mx-auto px-4 py-6">
-      <div className="space-y-6">
+      <form onSubmit={handleSubmit(onPreview)} className="space-y-6">
+        {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-1">
             Currency Convert
@@ -248,6 +432,13 @@ export function ConvertForm() {
             Convert between currencies at current market rates
           </p>
         </div>
+
+        {errors.root && (
+          <div className="flex items-center gap-1.5 text-destructive bg-destructive/10 p-3 rounded-xl border border-destructive/20">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span className="text-sm">{errors.root.message}</span>
+          </div>
+        )}
 
         <div className="space-y-4 bg-card rounded-2xl p-6 border border-border">
           <div>
@@ -288,7 +479,7 @@ export function ConvertForm() {
                       onClick={() => {
                         setFromCurrency(code);
                         setShowFromDropdown(false);
-                        setAmount("");
+                        setValue("amount", "");
                       }}
                       className={cn(
                         "w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted transition-colors",
@@ -324,7 +515,7 @@ export function ConvertForm() {
                   type="text"
                   inputMode="decimal"
                   placeholder="0.00"
-                  value={amount}
+                  {...register("amount")}
                   onChange={handleAmountChange}
                   className={cn(
                     "w-full px-4 py-3.5 pr-16 rounded-xl bg-muted/50 border text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200",
@@ -342,7 +533,7 @@ export function ConvertForm() {
               {errors.amount && (
                 <div className="flex items-center gap-1.5 text-destructive">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  <span className="text-xs">{errors.amount}</span>
+                  <span className="text-xs">{errors.amount.message}</span>
                 </div>
               )}
             </div>
@@ -465,27 +656,29 @@ export function ConvertForm() {
 
         <div className="space-y-3">
           <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isButtonDisabled}
-            title={rateError ?? undefined}
+            type="submit"
+            disabled={isButtonDisabled || isLocking}
+            title={rateError ? "Rates unavailable" : undefined}
             className={cn(
               "w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2",
-              "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98] transition-all duration-200",
-              isButtonDisabled && "opacity-60 cursor-not-allowed hover:bg-primary",
+              "bg-primary text-primary-foreground",
+              "hover:bg-primary/90 active:scale-[0.98]",
+              "transition-all duration-200",
+              (isButtonDisabled || isLocking) &&
+                "opacity-60 cursor-not-allowed hover:bg-primary",
             )}
           >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Converting...
-              </>
+            {isLocking ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-              "Convert Now"
+              <>
+                Lock Rate
+                <ArrowRight className="h-5 w-5 ml-2" />
+              </>
             )}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
