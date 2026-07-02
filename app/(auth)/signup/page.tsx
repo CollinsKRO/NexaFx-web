@@ -2,20 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
-import { signup } from "@/lib/api/auth";
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_REGEX = /^\+?[0-9\s().-]+$/;
-
-function isValidPhone(phone: string) {
-  const digitsOnly = phone.replace(/\D/g, "");
-  return (
-    PHONE_REGEX.test(phone) &&
-    digitsOnly.length >= 8 &&
-    digitsOnly.length <= 15
-  );
-}
+import { signUp } from "@/lib/api/auth";
+import { signupSchema, type SignupFormValues } from "@/lib/validations/auth";
+import { Input } from "@/components/ui/Input";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -23,194 +15,133 @@ export default function SignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState("");
-  const [formData, setFormData] = useState({
-    email: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { acceptTerms: true },
   });
-  const [errors, setErrors] = useState<Partial<typeof formData>>({});
 
-  const validate = () => {
-    const nextErrors: Partial<typeof formData> = {};
+  const acceptTerms = watch("acceptTerms");
 
-    if (!formData.email.trim()) {
-      nextErrors.email = "Email is required";
-    } else if (!EMAIL_REGEX.test(formData.email.trim())) {
-      nextErrors.email = "Enter a valid email address";
-    }
-
-    if (!formData.phone.trim()) {
-      nextErrors.phone = "Phone number is required";
-    } else if (!isValidPhone(formData.phone.trim())) {
-      nextErrors.phone = "Enter a valid international phone number";
-    }
-
-    if (!formData.password) {
-      nextErrors.password = "Password is required";
-    } else if (formData.password.length < 8) {
-      nextErrors.password = "Password must be at least 8 characters";
-    }
-
-    if (!formData.confirmPassword) {
-      nextErrors.confirmPassword = "Please confirm your password";
-    } else if (formData.password !== formData.confirmPassword) {
-      nextErrors.confirmPassword = "Passwords do not match";
-    }
-
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const onSubmit = async (data: SignupFormValues) => {
     setApiError("");
-
-    if (!validate()) return;
-
     setIsLoading(true);
-
     try {
-      await signup({
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        password: formData.password,
-      });
-      sessionStorage.setItem("signup-email", formData.email.trim());
+      await signUp({ email: data.email, phone: data.phone, password: data.password });
+      sessionStorage.setItem("signup_email", data.email);
       router.push("/signup/verify");
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "An account with this email already exists";
-      setApiError(
-        message === "Request failed with status 400"
-          ? "An account with this email already exists"
-          : message,
-      );
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-lg rounded-3xl border border-border/50 bg-card p-8 text-card-foreground shadow-[0_8px_30px_rgb(0,0,0,0.04)] animate-in fade-in zoom-in duration-500 sm:p-12">
-      <div className="mb-10 text-center">
-        <h1 className="mb-2 text-4xl font-bold text-foreground">
-          Create an account
-        </h1>
-        <p className="text-muted-foreground">Let&apos;s get you set up.</p>
+    <div className="w-full max-w-lg bg-card text-card-foreground rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8 sm:p-12 animate-in fade-in zoom-in duration-500 border border-border/50">
+      <div className="text-center mb-10">
+        <h1 className="text-4xl font-bold text-foreground mb-2">Create an account</h1>
+        <p className="text-muted-foreground">Let&#39;s get started...</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <input
-            className={`w-full h-14 rounded-xl border bg-background px-6 outline-none transition-all text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:ring-4 focus:ring-blue-100 ${
-              errors.email
-                ? "border-red-500 focus:ring-red-100"
-                : "border-zinc-200 dark:border-border"
-            }`}
-            type="email"
-            placeholder="Email address"
-            value={formData.email}
-            onChange={(event) =>
-              setFormData({ ...formData, email: event.target.value })
-            }
-          />
-          {errors.email && (
-            <p className="mt-1.5 ml-1 text-xs text-red-500">{errors.email}</p>
-          )}
-        </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <Input
+          {...register("email")}
+          type="email"
+          placeholder="Email address"
+          error={errors.email?.message}
+          className="h-14 px-6 rounded-xl border bg-background border-zinc-200 dark:border-border outline-none focus:border-blue-500 focus:ring-blue-100"
+        />
 
-        <div>
-          <input
-            className={`w-full h-14 rounded-xl border bg-background px-6 outline-none transition-all text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:ring-4 focus:ring-blue-100 ${
-              errors.phone
-                ? "border-red-500 focus:ring-red-100"
-                : "border-zinc-200 dark:border-border"
-            }`}
-            type="tel"
-            inputMode="tel"
-            placeholder="+234 801 234 5678"
-            value={formData.phone}
-            onChange={(event) =>
-              setFormData({ ...formData, phone: event.target.value })
-            }
-          />
-          {errors.phone && (
-            <p className="mt-1.5 ml-1 text-xs text-red-500">{errors.phone}</p>
-          )}
-        </div>
+        <Input
+          {...register("phone")}
+          type="tel"
+          placeholder="Phone Number"
+          error={errors.phone?.message}
+          className="h-14 px-6 rounded-xl border bg-background border-zinc-200 dark:border-border outline-none focus:border-blue-500 focus:ring-blue-100"
+        />
 
         <div className="relative">
-          <input
-            className={`w-full h-14 rounded-xl border bg-background px-6 pr-14 outline-none transition-all text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:ring-4 focus:ring-blue-100 ${
-              errors.password
-                ? "border-red-500 focus:ring-red-100"
-                : "border-zinc-200 dark:border-border"
-            }`}
+          <Input
+            {...register("password")}
             type={showPassword ? "text" : "password"}
             placeholder="Password"
-            value={formData.password}
-            onChange={(event) =>
-              setFormData({ ...formData, password: event.target.value })
-            }
+            error={errors.password?.message}
+            className="h-14 px-6 pr-14 rounded-xl border bg-background border-zinc-200 dark:border-border outline-none focus:border-blue-500 focus:ring-blue-100"
           />
           <button
             type="button"
-            onClick={() => setShowPassword((current) => !current)}
-            className="absolute right-4 top-4 text-muted-foreground transition-colors hover:text-foreground"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition-colors"
           >
             {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
           </button>
-          {errors.password && (
-            <p className="mt-1.5 ml-1 text-xs text-red-500">
-              {errors.password}
-            </p>
-          )}
         </div>
 
         <div className="relative">
-          <input
-            className={`w-full h-14 rounded-xl border bg-background px-6 pr-14 outline-none transition-all text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:ring-4 focus:ring-blue-100 ${
-              errors.confirmPassword
-                ? "border-red-500 focus:ring-red-100"
-                : "border-zinc-200 dark:border-border"
-            }`}
+          <Input
+            {...register("confirmPassword")}
             type={showConfirmPassword ? "text" : "password"}
-            placeholder="Confirm password"
-            value={formData.confirmPassword}
-            onChange={(event) =>
-              setFormData({ ...formData, confirmPassword: event.target.value })
-            }
+            placeholder="Confirm Password"
+            error={errors.confirmPassword?.message}
+            className="h-14 px-6 pr-14 rounded-xl border bg-background border-zinc-200 dark:border-border outline-none focus:border-blue-500 focus:ring-blue-100"
           />
           <button
             type="button"
-            onClick={() => setShowConfirmPassword((current) => !current)}
-            className="absolute right-4 top-4 text-muted-foreground transition-colors hover:text-foreground"
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition-colors"
           >
             {showConfirmPassword ? <EyeOff size={22} /> : <Eye size={22} />}
           </button>
-          {errors.confirmPassword && (
-            <p className="mt-1.5 ml-1 text-xs text-red-500">
-              {errors.confirmPassword}
-            </p>
-          )}
         </div>
 
-        {apiError && (
-          <p className="text-center text-xs text-red-500">{apiError}</p>
+        <div className="flex items-center gap-3 pt-2">
+          <div className="relative flex items-center">
+            <input
+              type="checkbox"
+              id="terms"
+              {...register("acceptTerms")}
+              className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-zinc-300 dark:border-border transition-all checked:bg-orange-500 checked:border-orange-500"
+            />
+            <svg
+              className="pointer-events-none absolute h-5 w-5 stroke-white opacity-0 peer-checked:opacity-100"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <label htmlFor="terms" className="text-sm font-medium text-muted-foreground cursor-pointer">
+            By clicking, I accept{" "}
+            <span className="text-orange-500 hover:underline">terms</span> and{" "}
+            <span className="text-orange-500 hover:underline">conditions</span> of this project
+          </label>
+        </div>
+        {errors.acceptTerms && (
+          <p className="text-xs text-red-500">{errors.acceptTerms.message}</p>
         )}
+
+        {apiError && <p className="text-xs text-red-500 text-center">{apiError}</p>}
 
         <button
           type="submit"
-          disabled={isLoading}
-          className="mt-6 h-16 w-full rounded-xl bg-orange-500 text-lg font-bold text-white shadow-[0_4px_14px_0_rgb(249,115,22,0.39)] transition-all hover:scale-[1.01] hover:bg-orange-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-orange-300"
+          disabled={isLoading || !acceptTerms}
+          className="w-full h-16 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 disabled:cursor-not-allowed text-white font-bold text-lg rounded-xl shadow-[0_4px_14px_0_rgb(249,115,22,0.39)] transition-all hover:scale-[1.01] active:scale-[0.99] mt-6"
         >
           {isLoading ? (
             <div className="flex items-center justify-center gap-2">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              <span>Creating account...</span>
+              <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Processing...</span>
             </div>
           ) : (
             "Create an account"
