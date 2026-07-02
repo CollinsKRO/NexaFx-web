@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Bell, User, Menu } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminGuard } from "@/components/admin/AdminGuard";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { NetworkStatusBanner } from "@/components/shared/network-status-banner";
 import { usePathname } from "next/navigation";
 
@@ -46,6 +47,7 @@ export default function AdminLayoutClient({
             </div>
 
             <div className="flex items-center gap-4">
+              <ThemeToggle />
               <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors relative">
                 <Bell size={20} />
                 <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
